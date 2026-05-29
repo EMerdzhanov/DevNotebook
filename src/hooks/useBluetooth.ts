@@ -3,10 +3,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { BluetoothStatus } from "../types";
 
-interface BluetoothDevice {
+interface PairingInfo {
+  qr_svg: string;
+  url: string;
+}
+
+interface PairedDevice {
   name: string;
   address: string;
-  rssi: number | null;
 }
 
 type BackendStatus = "Connected" | "Weak" | "Disconnected" | "NotConfigured";
@@ -31,16 +35,23 @@ export function useBluetooth(
 ) {
   const [status, setStatus] = useState<BluetoothStatus>("not-configured");
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [pairing, setPairing] = useState<PairingInfo | null>(null);
+  const [pairedDevice, setPairedDevice] = useState<PairedDevice | null>(null);
+  const [sensitivity, setSensitivity] = useState<number>(-75);
 
   useEffect(() => {
     const unlisten = listen<BackendStatus>("bluetooth-status", (event) => {
-      const mapped = mapStatus(event.payload);
-      setStatus(mapped);
+      setStatus(mapStatus(event.payload));
     });
 
-    // Initial status check
     invoke<BackendStatus>("bluetooth_status").then((s) =>
       setStatus(mapStatus(s)),
+    );
+    invoke<PairedDevice | null>("bluetooth_paired_device").then((d) =>
+      setPairedDevice(d),
+    );
+    invoke<number>("bluetooth_get_sensitivity").then((s) =>
+      setSensitivity(s),
     );
 
     return () => {
@@ -48,7 +59,6 @@ export function useBluetooth(
     };
   }, []);
 
-  // Handle countdown and lock
   useEffect(() => {
     if (status === "disconnected") {
       setCountdown(lockTimeout);
@@ -64,29 +74,60 @@ export function useBluetooth(
       setCountdown(null);
       return;
     }
-    const timer = setTimeout(() => setCountdown((c) => (c !== null ? c - 1 : null)), 1000);
+    const timer = setTimeout(
+      () => setCountdown((c) => (c !== null ? c - 1 : null)),
+      1000,
+    );
     return () => clearTimeout(timer);
   }, [countdown, onDisconnected]);
 
-  const scanDevices = useCallback(async (): Promise<BluetoothDevice[]> => {
-    return invoke<BluetoothDevice[]>("bluetooth_scan");
+  const startPairing = useCallback(async (): Promise<PairingInfo> => {
+    const info = await invoke<PairingInfo>("bluetooth_start_pairing");
+    setPairing(info);
+    return info;
   }, []);
 
-  const pairDevice = useCallback(async (address: string) => {
-    await invoke("bluetooth_pair", { address });
-    setStatus("disconnected"); // Will become connected when monitoring detects it
+  const checkPairingConfirmed = useCallback(async (): Promise<boolean> => {
+    return invoke<boolean>("bluetooth_check_pairing");
+  }, []);
+
+  const completePairing = useCallback(
+    async (name: string, address: string) => {
+      await invoke("bluetooth_complete_pairing", { name, address });
+      setPairedDevice({ name, address });
+      setPairing(null);
+      setStatus("disconnected");
+    },
+    [],
+  );
+
+  const cancelPairing = useCallback(async () => {
+    await invoke("bluetooth_cancel_pairing");
+    setPairing(null);
   }, []);
 
   const unpairDevice = useCallback(async () => {
     await invoke("bluetooth_unpair");
+    setPairedDevice(null);
     setStatus("not-configured");
+  }, []);
+
+  const updateSensitivity = useCallback(async (threshold: number) => {
+    await invoke("bluetooth_set_sensitivity", { threshold });
+    setSensitivity(threshold);
   }, []);
 
   return {
     status,
     countdown,
-    scanDevices,
-    pairDevice,
+    pairing,
+    pairedDevice,
+    sensitivity,
+    startPairing,
+    checkPairingConfirmed,
+    completePairing,
+    cancelPairing,
     unpairDevice,
+    updateSensitivity,
   };
 }

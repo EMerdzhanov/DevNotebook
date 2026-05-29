@@ -3,6 +3,8 @@ mod commands;
 mod crypto;
 mod db;
 mod files;
+mod pairing;
+mod proximity;
 mod state;
 
 use bluetooth::BluetoothMonitor;
@@ -79,10 +81,15 @@ pub fn run() {
             commands::add_tag_to_item,
             commands::remove_tag_from_item,
             commands::search_by_tag,
-            commands::bluetooth_scan,
-            commands::bluetooth_pair,
+            commands::bluetooth_start_pairing,
+            commands::bluetooth_check_pairing,
+            commands::bluetooth_complete_pairing,
+            commands::bluetooth_cancel_pairing,
             commands::bluetooth_unpair,
             commands::bluetooth_status,
+            commands::bluetooth_paired_device,
+            commands::bluetooth_set_sensitivity,
+            commands::bluetooth_get_sensitivity,
             files::get_suggested_file_folders,
             files::create_file_folder,
             files::get_file_folders,

@@ -1,4 +1,4 @@
-use crate::bluetooth::{BluetoothDevice, ProximityStatus};
+use crate::bluetooth::ProximityStatus;
 use crate::crypto;
 use crate::state::AppState;
 use rusqlite::params;
@@ -775,23 +775,72 @@ pub fn reorder_items(
 // ── Bluetooth Commands ──
 
 #[tauri::command]
-pub async fn bluetooth_scan(state: State<'_, AppState>) -> Result<Vec<BluetoothDevice>, String> {
-    state.bluetooth.scan_devices().await
+pub async fn bluetooth_start_pairing(
+    state: State<'_, AppState>,
+) -> Result<crate::bluetooth::PairingInfo, String> {
+    state.bluetooth.start_pairing().await
 }
 
 #[tauri::command]
-pub async fn bluetooth_pair(state: State<'_, AppState>, address: String) -> Result<(), String> {
-    state.bluetooth.set_paired_device(Some(address)).await;
+pub async fn bluetooth_check_pairing(
+    state: State<'_, AppState>,
+) -> Result<bool, String> {
+    Ok(state.bluetooth.check_pairing_confirmed().await)
+}
+
+#[tauri::command]
+pub async fn bluetooth_complete_pairing(
+    state: State<'_, AppState>,
+    name: String,
+    address: String,
+) -> Result<(), String> {
+    state
+        .bluetooth
+        .complete_pairing(crate::bluetooth::PairedDevice { name, address })
+        .await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn bluetooth_cancel_pairing(
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state.bluetooth.cancel_pairing().await;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn bluetooth_unpair(state: State<'_, AppState>) -> Result<(), String> {
-    state.bluetooth.set_paired_device(None).await;
+    state.bluetooth.unpair().await;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn bluetooth_status(state: State<'_, AppState>) -> Result<ProximityStatus, String> {
+pub async fn bluetooth_status(
+    state: State<'_, AppState>,
+) -> Result<crate::bluetooth::ProximityStatus, String> {
     Ok(state.bluetooth.get_status().await)
+}
+
+#[tauri::command]
+pub async fn bluetooth_paired_device(
+    state: State<'_, AppState>,
+) -> Result<Option<crate::bluetooth::PairedDevice>, String> {
+    Ok(state.bluetooth.get_paired_device().await)
+}
+
+#[tauri::command]
+pub async fn bluetooth_set_sensitivity(
+    state: State<'_, AppState>,
+    threshold: i16,
+) -> Result<(), String> {
+    state.bluetooth.set_sensitivity(threshold).await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn bluetooth_get_sensitivity(
+    state: State<'_, AppState>,
+) -> Result<i16, String> {
+    Ok(state.bluetooth.get_sensitivity().await)
 }

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Project, SecretCategory, Secret, Note, FileFolder, FileRecord } from "../types";
+import type { Project, SecretCategory, Secret, Note, FileFolder, FileRecord, Favorite, Tag } from "../types";
 
 // Auth
 export const checkVaultExists = () => invoke<boolean>("check_vault_exists");
@@ -96,3 +96,28 @@ export const exportFile = (fileId: string, destination: string) =>
 export const shareFile = (fileId: string) =>
   invoke<void>("share_file", { fileId });
 export const cleanupTempFiles = () => invoke<void>("cleanup_temp_files");
+
+// Reorder
+export const reorderItems = (table: string, ids: string[]) =>
+  invoke<void>("reorder_items", { table, ids });
+
+// Favorites
+export const getFavorites = (projectId: string) =>
+  invoke<Favorite[]>("get_favorites", { projectId });
+export const toggleFavorite = (
+  projectId: string,
+  itemId: string,
+  itemType: string,
+  itemName: string,
+) => invoke<boolean>("toggle_favorite", { projectId, itemId, itemType, itemName });
+
+// Tags
+export const getAllTags = () => invoke<Tag[]>("get_all_tags");
+export const getItemTags = (itemId: string) =>
+  invoke<Tag[]>("get_item_tags", { itemId });
+export const addTagToItem = (itemId: string, itemType: string, tagName: string) =>
+  invoke<Tag>("add_tag_to_item", { itemId, itemType, tagName });
+export const removeTagFromItem = (itemId: string, tagId: string) =>
+  invoke<void>("remove_tag_from_item", { itemId, tagId });
+export const searchByTag = (tagName: string) =>
+  invoke<[string, string, string][]>("search_by_tag", { tagName });

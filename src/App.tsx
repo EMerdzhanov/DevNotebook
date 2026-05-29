@@ -4,6 +4,7 @@ import type {
   SecretCategory,
   Note,
   FileFolder,
+  Favorite,
   AppScreen,
   ViewState,
 } from "./types";
@@ -16,6 +17,10 @@ import NoteEditor from "./components/NoteEditor";
 import LockScreen from "./components/LockScreen";
 import SettingsView from "./components/SettingsView";
 import FileListView from "./components/FileListView";
+import CommandPalette from "./components/CommandPalette";
+import KeyboardShortcuts from "./components/KeyboardShortcuts";
+import UndoToast from "./components/UndoToast";
+import type { UndoAction } from "./components/UndoToast";
 import { useBluetooth } from "./hooks/useBluetooth";
 import { useDragDrop } from "./hooks/useDragDrop";
 import { getSavedThemeId, getThemeById, applyTheme, saveThemeId } from "./themes";
@@ -47,6 +52,10 @@ export default function App() {
   const [availableTemplates, setAvailableTemplates] = useState<string[]>([]);
   const [fileFolders, setFileFolders] = useState<FileFolder[]>([]);
   const [availableFileFolderTemplates, setAvailableFileFolderTemplates] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
 
   // View state
   const [viewState, setViewState] = useState<ViewState | null>(null);
@@ -102,6 +111,28 @@ export default function App() {
 
   const { isDragging } = useDragDrop(handleFilesDropped);
 
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const meta = e.metaKey || e.ctrlKey;
+      if (meta && e.key === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen((v) => !v);
+      } else if (meta && e.key === "/") {
+        e.preventDefault();
+        setShortcutsOpen((v) => !v);
+      } else if (meta && e.key === "l" && screen === "main") {
+        e.preventDefault();
+        handleLockVault();
+      } else if (meta && e.key === ",") {
+        e.preventDefault();
+        setViewState({ view: "settings" });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [screen]);
+
   // Check if vault exists on mount
   useEffect(() => {
     const init = async () => {
@@ -119,18 +150,20 @@ export default function App() {
   // Load project data when active project changes
   const loadProjectData = useCallback(async (projectId: string) => {
     try {
-      const [cats, noteList, templates, folders, folderTemplates] = await Promise.all([
+      const [cats, noteList, templates, folders, folderTemplates, favs] = await Promise.all([
         api.getSecretCategories(projectId),
         api.getNotes(projectId),
         api.getBuiltinTemplates(projectId),
         api.getFileFolders(projectId),
         api.getSuggestedFileFolders(projectId),
+        api.getFavorites(projectId),
       ]);
       setCategories(cats);
       setNotes(noteList);
       setAvailableTemplates(templates);
       setFileFolders(folders);
       setAvailableFileFolderTemplates(folderTemplates);
+      setFavorites(favs);
 
       // Select first category by default
       if (cats.length > 0) {
@@ -213,8 +246,44 @@ export default function App() {
   };
 
   // Sidebar handlers
+  const handleSelectFavorite = (fav: Favorite) => {
+    if (fav.item_type === "secret") {
+      // Find which category this secret belongs to — for now navigate to secrets view
+      // We'd need the category_id, so let's just copy the secret value
+      handleQuickCopyById(fav.item_id);
+    } else if (fav.item_type === "note") {
+      setViewState({ view: "note", noteId: fav.item_id });
+    } else if (fav.item_type === "file") {
+      // Open the file
+      api.openFile(fav.item_id).catch(console.error);
+    }
+  };
+
+  const handleQuickCopyById = async (secretId: string) => {
+    try {
+      const value = await api.revealSecret(secretId);
+      await navigator.clipboard.writeText(value);
+      setTimeout(() => navigator.clipboard.writeText("").catch(() => {}), 30000);
+    } catch (err) {
+      console.error("Quick copy failed:", err);
+    }
+  };
+
   const handleSelectCategory = (id: string) => {
     setViewState({ view: "secrets", categoryId: id });
+  };
+
+  const handleQuickCopy = async (categoryId: string) => {
+    try {
+      const secrets = await api.getSecrets(categoryId);
+      if (secrets.length === 0) return;
+      const value = await api.revealSecret(secrets[0].id);
+      await navigator.clipboard.writeText(value);
+      // Auto-clear after 30s
+      setTimeout(() => navigator.clipboard.writeText("").catch(() => {}), 30000);
+    } catch (err) {
+      console.error("Quick copy failed:", err);
+    }
   };
 
   const handleSelectNote = (id: string) => {
@@ -331,6 +400,9 @@ export default function App() {
           onAddSection={handleAddSection}
           onAddFileFolder={handleAddFileFolder}
           onCreateNote={handleCreateNote}
+          favorites={favorites}
+          onQuickCopy={handleQuickCopy}
+          onSelectFavorite={handleSelectFavorite}
           onOpenSettings={handleOpenSettings}
           isSettingsActive={viewState?.view === "settings"}
         />
@@ -383,6 +455,34 @@ export default function App() {
         bluetoothStatus={bluetooth.status}
         bluetoothDevice=""
         lockCountdown={bluetooth.countdown}
+      />
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        projects={projects}
+        categories={categories}
+        notes={notes}
+        fileFolders={fileFolders}
+        onSelectProject={handleSelectProject}
+        onSelectCategory={handleSelectCategory}
+        onSelectNote={handleSelectNote}
+        onSelectFileFolder={handleSelectFileFolder}
+        onOpenSettings={handleOpenSettings}
+        onLockVault={handleLockVault}
+      />
+
+      {/* Keyboard Shortcuts */}
+      <KeyboardShortcuts
+        isOpen={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
+
+      {/* Undo Toast */}
+      <UndoToast
+        action={undoAction}
+        onDismiss={() => setUndoAction(null)}
       />
 
       {/* Drag-and-drop overlay */}

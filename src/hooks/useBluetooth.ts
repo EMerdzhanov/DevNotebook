@@ -6,6 +6,7 @@ import type { BluetoothStatus } from "../types";
 interface BluetoothDevice {
   name: string;
   address: string;
+  rssi: number | null;
 }
 
 type BackendStatus = "Connected" | "Weak" | "Disconnected" | "NotConfigured";

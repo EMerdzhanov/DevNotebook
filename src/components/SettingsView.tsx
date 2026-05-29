@@ -4,6 +4,23 @@ import { themes } from "../themes";
 interface BluetoothDevice {
   name: string;
   address: string;
+  rssi: number | null;
+}
+
+function SignalBars({ rssi }: { rssi: number | null }) {
+  // Map RSSI to 1-4 bars: >-50 = 4, >-65 = 3, >-80 = 2, else 1
+  const bars = rssi === null ? 0 : rssi > -50 ? 4 : rssi > -65 ? 3 : rssi > -80 ? 2 : 1;
+  return (
+    <div className="flex items-end gap-px" title={rssi !== null ? `${rssi} dBm` : "No signal"}>
+      {[1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className={`w-[3px] rounded-sm ${i <= bars ? "bg-accent" : "bg-border"}`}
+          style={{ height: `${4 + i * 3}px` }}
+        />
+      ))}
+    </div>
+  );
 }
 
 interface SettingsViewProps {
@@ -118,7 +135,7 @@ export default function SettingsView({
               <div className="text-[14px] text-text-primary">Paired Device</div>
               <div className="mt-1 text-[12px] text-text-muted">
                 {bluetoothStatus === "not-configured"
-                  ? "No device paired"
+                  ? "No device paired — pair your phone to auto-lock when you walk away"
                   : `Status: ${bluetoothStatus}`}
               </div>
             </div>
@@ -132,17 +149,32 @@ export default function SettingsView({
             )}
           </div>
 
-          <button
-            className="rounded border border-accent bg-bg-input px-4 py-2 text-[13px] text-accent transition-colors hover:bg-accent hover:text-bg-base disabled:opacity-50"
-            onClick={handleScan}
-            disabled={scanning}
-          >
-            {scanning ? "Scanning..." : "Scan for Devices"}
-          </button>
+          <div className="mb-3">
+            <button
+              className="rounded border border-accent bg-bg-input px-4 py-2 text-[13px] text-accent transition-colors hover:bg-accent hover:text-bg-base disabled:opacity-50"
+              onClick={handleScan}
+              disabled={scanning}
+            >
+              {scanning ? "Scanning for phones..." : "Scan for Phones"}
+            </button>
+          </div>
+
+          {scanning && (
+            <div className="mb-3 text-[11px] text-text-dim">
+              Make sure Bluetooth is on and your phone is nearby. On iPhone, open
+              Settings &gt; Bluetooth. On Android, enable Bluetooth visibility.
+            </div>
+          )}
 
           {scanError && (
             <div className="mt-3 rounded bg-status-disconnected/10 px-3 py-2 text-[12px] text-status-disconnected">
               {scanError}
+            </div>
+          )}
+
+          {!scanning && devices.length === 0 && scanError === null && bluetoothStatus === "not-configured" && (
+            <div className="text-[11px] text-text-dim">
+              Tip: open Bluetooth settings on your phone before scanning so it's discoverable.
             </div>
           )}
 
@@ -153,12 +185,15 @@ export default function SettingsView({
                   key={device.address}
                   className="flex items-center justify-between rounded border border-border-subtle bg-bg-base p-3"
                 >
-                  <div>
-                    <div className="text-[13px] text-text-primary">
-                      {device.name}
-                    </div>
-                    <div className="text-[11px] text-text-muted">
-                      {device.address}
+                  <div className="flex items-center gap-3">
+                    <SignalBars rssi={device.rssi} />
+                    <div>
+                      <div className="text-[13px] text-text-primary">
+                        {device.name}
+                      </div>
+                      <div className="text-[11px] text-text-muted">
+                        {device.address}
+                      </div>
                     </div>
                   </div>
                   <button

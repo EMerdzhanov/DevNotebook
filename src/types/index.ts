@@ -62,6 +62,20 @@ export interface FileRecord {
   updated_at: string;
 }
 
+export interface Favorite {
+  id: string;
+  project_id: string;
+  item_id: string;
+  item_type: string;
+  item_name: string;
+  sort_order: number;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+}
+
 export type SidebarItem =
   | { type: "category"; data: SecretCategory }
   | { type: "note"; data: Note };

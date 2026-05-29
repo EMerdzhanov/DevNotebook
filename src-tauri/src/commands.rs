@@ -555,6 +555,218 @@ pub fn delete_note(state: State<'_, AppState>, id: String) -> Result<(), String>
     Ok(())
 }
 
+// ── Favorites Commands ──
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Favorite {
+    pub id: String,
+    pub project_id: String,
+    pub item_id: String,
+    pub item_type: String,
+    pub item_name: String,
+    pub sort_order: i32,
+}
+
+#[tauri::command]
+pub fn get_favorites(state: State<'_, AppState>, project_id: String) -> Result<Vec<Favorite>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, project_id, item_id, item_type, item_name, sort_order FROM favorites WHERE project_id = ?1 ORDER BY sort_order")
+        .map_err(|e| e.to_string())?;
+
+    let favs = stmt
+        .query_map(params![project_id], |row| {
+            Ok(Favorite {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                item_id: row.get(2)?,
+                item_type: row.get(3)?,
+                item_name: row.get(4)?,
+                sort_order: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(favs)
+}
+
+#[tauri::command]
+pub fn toggle_favorite(
+    state: State<'_, AppState>,
+    project_id: String,
+    item_id: String,
+    item_type: String,
+    item_name: String,
+) -> Result<bool, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    // Check if already favorited
+    let exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) > 0 FROM favorites WHERE item_id = ?1 AND project_id = ?2",
+            params![item_id, project_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    if exists {
+        conn.execute("DELETE FROM favorites WHERE item_id = ?1 AND project_id = ?2", params![item_id, project_id])
+            .map_err(|e| e.to_string())?;
+        Ok(false)
+    } else {
+        let id = uuid::Uuid::new_v4().to_string();
+        let max_order: i32 = conn
+            .query_row("SELECT COALESCE(MAX(sort_order), -1) FROM favorites WHERE project_id = ?1", params![project_id], |row| row.get(0))
+            .map_err(|e| e.to_string())?;
+
+        conn.execute(
+            "INSERT INTO favorites (id, project_id, item_id, item_type, item_name, sort_order) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![id, project_id, item_id, item_type, item_name, max_order + 1],
+        ).map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+}
+
+// ── Tags Commands ──
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Tag {
+    pub id: String,
+    pub name: String,
+}
+
+#[tauri::command]
+pub fn get_all_tags(state: State<'_, AppState>) -> Result<Vec<Tag>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let mut stmt = conn.prepare("SELECT id, name FROM tags ORDER BY name").map_err(|e| e.to_string())?;
+    let tags = stmt
+        .query_map([], |row| Ok(Tag { id: row.get(0)?, name: row.get(1)? }))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(tags)
+}
+
+#[tauri::command]
+pub fn get_item_tags(state: State<'_, AppState>, item_id: String) -> Result<Vec<Tag>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let mut stmt = conn
+        .prepare("SELECT t.id, t.name FROM tags t INNER JOIN item_tags it ON t.id = it.tag_id WHERE it.item_id = ?1 ORDER BY t.name")
+        .map_err(|e| e.to_string())?;
+
+    let tags = stmt
+        .query_map(params![item_id], |row| Ok(Tag { id: row.get(0)?, name: row.get(1)? }))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(tags)
+}
+
+#[tauri::command]
+pub fn add_tag_to_item(
+    state: State<'_, AppState>,
+    item_id: String,
+    item_type: String,
+    tag_name: String,
+) -> Result<Tag, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    // Get or create tag
+    let tag_id: String = match conn.query_row("SELECT id FROM tags WHERE name = ?1", params![tag_name], |row| row.get(0)) {
+        Ok(id) => id,
+        Err(_) => {
+            let id = uuid::Uuid::new_v4().to_string();
+            conn.execute("INSERT INTO tags (id, name) VALUES (?1, ?2)", params![id, tag_name])
+                .map_err(|e| e.to_string())?;
+            id
+        }
+    };
+
+    // Link tag to item (ignore if already linked)
+    conn.execute(
+        "INSERT OR IGNORE INTO item_tags (item_id, tag_id, item_type) VALUES (?1, ?2, ?3)",
+        params![item_id, tag_id, item_type],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(Tag { id: tag_id, name: tag_name })
+}
+
+#[tauri::command]
+pub fn remove_tag_from_item(state: State<'_, AppState>, item_id: String, tag_id: String) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    conn.execute("DELETE FROM item_tags WHERE item_id = ?1 AND tag_id = ?2", params![item_id, tag_id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn search_by_tag(state: State<'_, AppState>, tag_name: String) -> Result<Vec<(String, String, String)>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT it.item_id, it.item_type, \
+             COALESCE(s.name, n.title, f.filename, '') as item_name \
+             FROM item_tags it \
+             INNER JOIN tags t ON t.id = it.tag_id \
+             LEFT JOIN secrets s ON it.item_id = s.id AND it.item_type = 'secret' \
+             LEFT JOIN notes n ON it.item_id = n.id AND it.item_type = 'note' \
+             LEFT JOIN files f ON it.item_id = f.id AND it.item_type = 'file' \
+             WHERE t.name = ?1"
+        )
+        .map_err(|e| e.to_string())?;
+
+    let results = stmt
+        .query_map(params![tag_name], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(results)
+}
+
+// ── Reorder Commands ──
+
+#[tauri::command]
+pub fn reorder_items(
+    state: State<'_, AppState>,
+    table: String,
+    ids: Vec<String>,
+) -> Result<(), String> {
+    let allowed_tables = ["secret_categories", "file_folders", "notes", "favorites"];
+    if !allowed_tables.contains(&table.as_str()) {
+        return Err(format!("Invalid table: {}", table));
+    }
+
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    for (i, id) in ids.iter().enumerate() {
+        conn.execute(
+            &format!("UPDATE {} SET sort_order = ?1 WHERE id = ?2", table),
+            params![i as i32, id],
+        ).map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
 // ── Bluetooth Commands ──
 
 #[tauri::command]

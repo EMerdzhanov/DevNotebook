@@ -19,6 +19,7 @@ pub enum ProximityStatus {
 pub struct BluetoothDevice {
     pub name: String,
     pub address: String,
+    pub rssi: Option<i16>,
 }
 
 pub struct BluetoothMonitor {
@@ -51,7 +52,8 @@ impl BluetoothMonitor {
         self.status.lock().await.clone()
     }
 
-    /// Scan for nearby BLE devices and return their names + addresses.
+    /// Scan for nearby phones via BLE and return their names + addresses.
+    /// Filters to only phone-like devices using appearance and name heuristics.
     pub async fn scan_devices(&self) -> Result<Vec<BluetoothDevice>, String> {
         let manager = Manager::new()
             .await
@@ -72,8 +74,8 @@ impl BluetoothMonitor {
             .await
             .map_err(|e| format!("Failed to start scan: {}", e))?;
 
-        // Scan for 5 seconds
-        time::sleep(Duration::from_secs(5)).await;
+        // Scan for 8 seconds — phones can take longer to appear
+        time::sleep(Duration::from_secs(8)).await;
 
         adapter
             .stop_scan()
@@ -89,13 +91,29 @@ impl BluetoothMonitor {
         for p in peripherals {
             let props = p.properties().await.ok().flatten();
             if let Some(props) = props {
-                let name = props
-                    .local_name
-                    .unwrap_or_else(|| "Unknown Device".to_string());
+                // Skip unnamed devices — phones always have a name
+                let name = match &props.local_name {
+                    Some(n) if !n.is_empty() => n.clone(),
+                    _ => continue,
+                };
+
+                // Check if this is likely a phone
+                if !is_likely_phone(&name, None) {
+                    continue;
+                }
+
                 let address = props.address.to_string();
-                devices.push(BluetoothDevice { name, address });
+                let rssi = props.rssi;
+                devices.push(BluetoothDevice { name, address, rssi });
             }
         }
+
+        // Sort by signal strength (strongest first)
+        devices.sort_by(|a, b| {
+            let rssi_a = a.rssi.unwrap_or(-100);
+            let rssi_b = b.rssi.unwrap_or(-100);
+            rssi_b.cmp(&rssi_a)
+        });
 
         Ok(devices)
     }
@@ -149,6 +167,74 @@ impl BluetoothMonitor {
             }); // block_on
         }); // thread::spawn
     }
+}
+
+/// Determine if a BLE device is likely a phone.
+///
+/// Uses an exclusion strategy: allow everything through EXCEPT devices that are
+/// clearly not phones (peripherals, accessories, appliances, computers).
+/// This ensures phones with custom names or uncommon brands still appear.
+fn is_likely_phone(name: &str, appearance: Option<u16>) -> bool {
+    // BLE appearance: reject known non-phone categories
+    if let Some(app) = appearance {
+        let category = app >> 6; // upper 10 bits = category
+        match category {
+            // 0 = Unknown — allow through (many phones report this)
+            0 => {}
+            // 1 = Phone — definitely yes
+            1 => return true,
+            // 2 = Computer (laptop, tablet, desktop)
+            2 => return false,
+            // 3 = Watch
+            3 => return false,
+            // 15 = HID (keyboard, mouse, gamepad)
+            15 => return false,
+            // Other categories: allow through, filter by name below
+            _ => {}
+        }
+    }
+
+    let lower = name.to_lowercase();
+
+    // Exclude: devices that are definitely not phones
+    let not_phone = [
+        // Audio
+        "airpods", "buds", "earbuds", "headphone", "headset",
+        "speaker", "soundbar", "soundcore", "bose ", "jbl ",
+        "sony wh-", "sony wf-", "beats ", "jabra", "marshall",
+        "homepod", "echo", "sonos",
+        // Input devices
+        "keyboard", "mouse", "trackpad", "trackball", "gamepad",
+        "controller", "joystick", "magic mouse", "magic keyboard",
+        // Wearables
+        "watch", " band", "fitbit", "garmin", "whoop", "oura",
+        // TVs and streaming
+        " tv", "smart tv", "roku", "chromecast", "firestick",
+        "fire tv", "apple tv", "shield",
+        "[tv]", "[lg]", "samsung tv", "lg tv", "sony tv",
+        "tizen", "webos", "vidaa",
+        // Computers
+        "macbook", "imac", "mac mini", "mac pro", "mac studio",
+        "laptop", "desktop", "thinkpad", "surface",
+        // Printers and peripherals
+        "printer", "scanner", "epson", "canon mx", "canon pixma",
+        "brother ", "hp deskjet", "hp officejet",
+        // Cameras
+        "gopro", "camera", "canon eos", "nikon",
+        // Trackers
+        "tile", "airtag", "chipolo", "smarttag",
+        // IoT / embedded
+        "arduino", "esp32", "raspberry", "sensor", "beacon",
+        "thermometer", "scale", "thermostat", "hue", "bulb",
+        "lock", "door", "plug", "switch", "light",
+    ];
+
+    if not_phone.iter().any(|p| lower.contains(p)) {
+        return false;
+    }
+
+    // Allow everything else — phones with any name will pass through
+    true
 }
 
 async fn get_adapter(manager: &Manager) -> Option<Adapter> {

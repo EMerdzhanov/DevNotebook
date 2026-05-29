@@ -42,6 +42,10 @@ interface SidebarProps {
   favorites: Favorite[];
   onQuickCopy: (categoryId: string) => void;
   onSelectFavorite: (fav: Favorite) => void;
+  onDeleteCategory: (id: string) => void;
+  onDeleteNote: (id: string) => void;
+  onDeleteFileFolder: (id: string) => void;
+  onToggleFavorite: (itemId: string, itemType: string, itemName: string) => void;
   onOpenSettings: () => void;
   isSettingsActive: boolean;
 }
@@ -64,11 +68,20 @@ export default function Sidebar({
   favorites,
   onQuickCopy,
   onSelectFavorite,
+  onDeleteCategory,
+  onDeleteNote,
+  onDeleteFileFolder,
+  onToggleFavorite,
   onOpenSettings,
   isSettingsActive,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(200);
+  const [ctxMenu, setCtxMenu] = useState<{
+    x: number;
+    y: number;
+    items: { label: string; danger?: boolean; action: () => void }[];
+  } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const isResizing = useRef(false);
@@ -194,6 +207,16 @@ export default function Sidebar({
                 : "border-l-2 border-transparent text-text-secondary hover:text-text-primary"
             }`}
             onClick={() => onSelectCategory(cat.id)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setCtxMenu({
+                x: e.clientX, y: e.clientY,
+                items: [
+                  { label: favorites.some(f => f.item_id === cat.id) ? "Unpin" : "Pin", action: () => onToggleFavorite(cat.id, "category", cat.name) },
+                  { label: "Delete", danger: true, action: () => onDeleteCategory(cat.id) },
+                ],
+              });
+            }}
           >
             <span>{cat.name}</span>
             <button
@@ -308,6 +331,15 @@ export default function Sidebar({
                 : "border-l-2 border-transparent text-text-secondary hover:text-text-primary"
             }`}
             onClick={() => onSelectFileFolder(folder.id)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setCtxMenu({
+                x: e.clientX, y: e.clientY,
+                items: [
+                  { label: "Delete Folder", danger: true, action: () => onDeleteFileFolder(folder.id) },
+                ],
+              });
+            }}
           >
             <span>{folder.name}</span>
             {folder.file_count > 0 && (
@@ -350,6 +382,16 @@ export default function Sidebar({
                     : "border-l-2 border-transparent text-text-secondary hover:text-text-primary"
                 }`}
                 onClick={() => onSelectNote(note.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setCtxMenu({
+                    x: e.clientX, y: e.clientY,
+                    items: [
+                      { label: favorites.some(f => f.item_id === note.id) ? "Unpin" : "Pin", action: () => onToggleFavorite(note.id, "note", note.title) },
+                      { label: "Delete", danger: true, action: () => onDeleteNote(note.id) },
+                    ],
+                  });
+                }}
               >
                 {note.title}
               </button>
@@ -375,6 +417,35 @@ export default function Sidebar({
       >
         Settings
       </button>
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <div
+          className="fixed inset-0 z-50"
+          onClick={() => setCtxMenu(null)}
+          onContextMenu={(e) => { e.preventDefault(); setCtxMenu(null); }}
+        >
+          <div
+            className="fixed rounded border border-border bg-bg-card py-1 shadow-lg"
+            style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          >
+            {ctxMenu.items.map((item, i) => (
+              <button
+                key={i}
+                className={`flex w-full items-center px-4 py-1.5 text-left text-[12px] transition-colors hover:bg-bg-input ${
+                  item.danger ? "text-status-disconnected" : "text-text-primary"
+                }`}
+                onClick={() => {
+                  item.action();
+                  setCtxMenu(null);
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Resize handle */}
       <div

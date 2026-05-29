@@ -318,6 +318,57 @@ export default function App() {
     }
   };
 
+  const handleDeleteCategory = async (id: string) => {
+    try {
+      await api.deleteSecretCategory(id);
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      if (viewState?.view === "secrets" && viewState.categoryId === id) {
+        setViewState(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete category:", err);
+    }
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    try {
+      await api.deleteNote(id);
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+      if (viewState?.view === "note" && viewState.noteId === id) {
+        setViewState(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete note:", err);
+    }
+  };
+
+  const handleDeleteFileFolder = async (id: string) => {
+    try {
+      await api.deleteFileFolder(id);
+      setFileFolders((prev) => prev.filter((f) => f.id !== id));
+      if (viewState?.view === "files" && viewState.folderId === id) {
+        setViewState(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete folder:", err);
+    }
+  };
+
+  const handleToggleFavorite = async (itemId: string, itemType: string, itemName: string) => {
+    if (!activeProjectId) return;
+    try {
+      const isFav = await api.toggleFavorite(activeProjectId, itemId, itemType, itemName);
+      if (isFav) {
+        const favs = await api.getFavorites(activeProjectId);
+        setFavorites(favs);
+      } else {
+        setFavorites((prev) => prev.filter((f) => f.item_id !== itemId));
+      }
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+    }
+  };
+
   const handleOpenSettings = () => {
     setViewState({ view: "settings" });
   };
@@ -403,6 +454,10 @@ export default function App() {
           favorites={favorites}
           onQuickCopy={handleQuickCopy}
           onSelectFavorite={handleSelectFavorite}
+          onDeleteCategory={handleDeleteCategory}
+          onDeleteNote={handleDeleteNote}
+          onDeleteFileFolder={handleDeleteFileFolder}
+          onToggleFavorite={handleToggleFavorite}
           onOpenSettings={handleOpenSettings}
           isSettingsActive={viewState?.view === "settings"}
         />

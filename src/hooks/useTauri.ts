@@ -1,0 +1,98 @@
+import { invoke } from "@tauri-apps/api/core";
+import type { Project, SecretCategory, Secret, Note, FileFolder, FileRecord } from "../types";
+
+// Auth
+export const checkVaultExists = () => invoke<boolean>("check_vault_exists");
+export const createVault = (password: string) =>
+  invoke<void>("create_vault", { password });
+export const unlockVault = (password: string) =>
+  invoke<void>("unlock_vault", { password });
+export const lockVault = () => invoke<void>("lock_vault");
+
+// Projects
+export const getProjects = () => invoke<Project[]>("get_projects");
+export const createProject = (name: string) =>
+  invoke<Project>("create_project", { name });
+export const renameProject = (id: string, name: string) =>
+  invoke<void>("rename_project", { id, name });
+export const deleteProject = (id: string) =>
+  invoke<void>("delete_project", { id });
+
+// Secret Categories
+export const getSecretCategories = (projectId: string) =>
+  invoke<SecretCategory[]>("get_secret_categories", { projectId });
+export const getBuiltinTemplates = (projectId: string) =>
+  invoke<string[]>("get_builtin_templates", { projectId });
+export const createSecretCategory = (projectId: string, name: string) =>
+  invoke<SecretCategory>("create_secret_category", { projectId, name });
+export const hideSecretCategory = (id: string) =>
+  invoke<void>("hide_secret_category", { id });
+export const deleteSecretCategory = (id: string) =>
+  invoke<void>("delete_secret_category", { id });
+
+// Secrets
+export const getSecrets = (categoryId: string) =>
+  invoke<Secret[]>("get_secrets", { categoryId });
+export const createSecret = (
+  categoryId: string,
+  name: string,
+  value: string,
+  notes: string,
+) => invoke<Secret>("create_secret", { categoryId, name, value, notes });
+export const revealSecret = (id: string) =>
+  invoke<string>("reveal_secret", { id });
+export const updateSecret = (
+  id: string,
+  name: string,
+  value: string,
+  notes: string,
+) => invoke<void>("update_secret", { id, name, value, notes });
+export const deleteSecret = (id: string) =>
+  invoke<void>("delete_secret", { id });
+
+// Notes
+export const getNotes = (projectId: string) =>
+  invoke<Note[]>("get_notes", { projectId });
+export const createNote = (
+  projectId: string,
+  title: string,
+  category: string,
+) => invoke<Note>("create_note", { projectId, title, category });
+export const updateNote = (id: string, title: string, content: string) =>
+  invoke<void>("update_note", { id, title, content });
+export const deleteNote = (id: string) => invoke<void>("delete_note", { id });
+
+// File Folders
+export const getSuggestedFileFolders = (projectId: string) =>
+  invoke<string[]>("get_suggested_file_folders", { projectId });
+export const createFileFolder = (projectId: string, name: string) =>
+  invoke<FileFolder>("create_file_folder", { projectId, name });
+export const getFileFolders = (projectId: string) =>
+  invoke<FileFolder[]>("get_file_folders", { projectId });
+export const deleteFileFolder = (id: string) =>
+  invoke<void>("delete_file_folder", { id });
+
+// Files
+export const addFile = (
+  projectId: string,
+  folderId: string,
+  sourcePath: string,
+  encrypt: boolean,
+) => invoke<FileRecord>("add_file", { projectId, folderId, sourcePath, encrypt });
+export const getFiles = (folderId: string) =>
+  invoke<FileRecord[]>("get_files", { folderId });
+export const getFilePath = (fileId: string) =>
+  invoke<string>("get_file_path", { fileId });
+export const getThumbnailPath = (fileId: string) =>
+  invoke<string>("get_thumbnail_path", { fileId });
+export const deleteFile = (fileId: string) =>
+  invoke<void>("delete_file", { fileId });
+export const toggleFileEncryption = (fileId: string) =>
+  invoke<boolean>("toggle_file_encryption", { fileId });
+export const openFile = (fileId: string) =>
+  invoke<void>("open_file", { fileId });
+export const exportFile = (fileId: string, destination: string) =>
+  invoke<void>("export_file", { fileId, destination });
+export const shareFile = (fileId: string) =>
+  invoke<void>("share_file", { fileId });
+export const cleanupTempFiles = () => invoke<void>("cleanup_temp_files");

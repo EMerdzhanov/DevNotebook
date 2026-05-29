@@ -1,0 +1,95 @@
+mod bluetooth;
+mod commands;
+mod crypto;
+mod db;
+mod files;
+mod state;
+
+use bluetooth::BluetoothMonitor;
+use db::Database;
+use state::AppState;
+use std::sync::Mutex;
+use tauri::Manager;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
+        .setup(|app| {
+            if cfg!(debug_assertions) {
+                app.handle().plugin(
+                    tauri_plugin_log::Builder::default()
+                        .level(log::LevelFilter::Info)
+                        .build(),
+                )?;
+            }
+
+            // Set up database path in app data directory
+            let app_data = app
+                .path()
+                .app_data_dir()
+                .expect("Failed to get app data directory");
+            std::fs::create_dir_all(&app_data).expect("Failed to create app data directory");
+
+            let db_path = app_data.join("vault.db");
+            let database = Database::new(db_path);
+
+            let bt_monitor = BluetoothMonitor::new();
+
+            // Start Bluetooth monitoring in background
+            bt_monitor.start_monitoring(app.handle().clone());
+
+            app.manage(AppState {
+                db: database,
+                encryption_key: Mutex::new(None),
+                bluetooth: bt_monitor,
+            });
+
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::check_vault_exists,
+            commands::create_vault,
+            commands::unlock_vault,
+            commands::lock_vault,
+            commands::get_projects,
+            commands::create_project,
+            commands::rename_project,
+            commands::delete_project,
+            commands::get_secret_categories,
+            commands::get_builtin_templates,
+            commands::create_secret_category,
+            commands::hide_secret_category,
+            commands::delete_secret_category,
+            commands::get_secrets,
+            commands::create_secret,
+            commands::reveal_secret,
+            commands::update_secret,
+            commands::delete_secret,
+            commands::get_notes,
+            commands::create_note,
+            commands::update_note,
+            commands::delete_note,
+            commands::bluetooth_scan,
+            commands::bluetooth_pair,
+            commands::bluetooth_unpair,
+            commands::bluetooth_status,
+            files::get_suggested_file_folders,
+            files::create_file_folder,
+            files::get_file_folders,
+            files::delete_file_folder,
+            files::add_file,
+            files::get_files,
+            files::get_file_path,
+            files::get_thumbnail_path,
+            files::delete_file,
+            files::toggle_file_encryption,
+            files::open_file,
+            files::export_file,
+            files::share_file,
+            files::cleanup_temp_files,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}

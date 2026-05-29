@@ -6,3 +6,6 @@ target/
 .DS_Store
 *.db
 *.db-journal
+*.salt
+*.env
+.env*

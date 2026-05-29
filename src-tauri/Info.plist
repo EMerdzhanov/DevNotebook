@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>DevNotebook uses Bluetooth to detect your phone's proximity for automatic vault locking when you walk away.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>DevNotebook uses Bluetooth to detect your phone's proximity for automatic vault locking when you walk away.</string>
+</dict>
+</plist>

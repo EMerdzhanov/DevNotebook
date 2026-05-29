@@ -1,0 +1,77 @@
+export interface Project {
+  id: string;
+  name: string;
+  icon: string;
+  directory_path: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SecretCategory {
+  id: string;
+  project_id: string;
+  name: string;
+  icon: string;
+  is_builtin: boolean;
+  is_hidden: boolean;
+  sort_order: number;
+}
+
+export interface Secret {
+  id: string;
+  category_id: string;
+  name: string;
+  masked_preview: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Note {
+  id: string;
+  project_id: string;
+  title: string;
+  content: string;
+  category: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FileFolder {
+  id: string;
+  project_id: string;
+  name: string;
+  sort_order: number;
+  file_count: number;
+}
+
+export interface FileRecord {
+  id: string;
+  folder_id: string;
+  project_id: string;
+  filename: string;
+  file_path: string;
+  mime_type: string;
+  size_bytes: number;
+  is_encrypted: boolean;
+  thumbnail_path: string;
+  note_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SidebarItem =
+  | { type: "category"; data: SecretCategory }
+  | { type: "note"; data: Note };
+
+export type ViewState =
+  | { view: "secrets"; categoryId: string }
+  | { view: "note"; noteId: string }
+  | { view: "files"; folderId: string }
+  | { view: "settings" };
+
+export type AppScreen = "loading" | "setup" | "login" | "main";
+
+export type BluetoothStatus = "connected" | "weak" | "disconnected" | "not-configured";

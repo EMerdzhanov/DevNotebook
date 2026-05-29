@@ -38,7 +38,8 @@ export const createSecret = (
   name: string,
   value: string,
   notes: string,
-) => invoke<Secret>("create_secret", { categoryId, name, value, notes });
+  url: string,
+) => invoke<Secret>("create_secret", { categoryId, name, value, notes, url });
 export const revealSecret = (id: string) =>
   invoke<string>("reveal_secret", { id });
 export const updateSecret = (
@@ -46,7 +47,8 @@ export const updateSecret = (
   name: string,
   value: string,
   notes: string,
-) => invoke<void>("update_secret", { id, name, value, notes });
+  url: string,
+) => invoke<void>("update_secret", { id, name, value, notes, url });
 export const deleteSecret = (id: string) =>
   invoke<void>("delete_secret", { id });
 

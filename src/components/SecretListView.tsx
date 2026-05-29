@@ -95,7 +95,21 @@ export default function SecretListView({
               className="flex items-center justify-between rounded-md border border-border bg-bg-card p-3.5"
             >
               <div>
-                <div className="text-[14px] text-text-primary">{secret.name}</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[14px] text-text-primary">{secret.name}</span>
+                  {secret.url && (
+                    <a
+                      href={secret.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-accent hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                      title={secret.url}
+                    >
+                      🔗
+                    </a>
+                  )}
+                </div>
                 <div className="mt-1 font-mono text-[12px] text-text-muted">
                   {revealedId === secret.id
                     ? revealedValue
@@ -104,6 +118,11 @@ export default function SecretListView({
                 {secret.notes && (
                   <div className="mt-1 text-[11px] text-text-dim">
                     {secret.notes}
+                  </div>
+                )}
+                {secret.url && (
+                  <div className="mt-1 truncate text-[11px] text-accent/60">
+                    {secret.url}
                   </div>
                 )}
               </div>
@@ -174,6 +193,7 @@ function SecretEditModal({
   const [name, setName] = useState(secret?.name ?? "");
   const [value, setValue] = useState("");
   const [notes, setNotes] = useState(secret?.notes ?? "");
+  const [url, setUrl] = useState(secret?.url ?? "");
   const [showValue, setShowValue] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -191,9 +211,9 @@ function SecretEditModal({
     setLoading(true);
     try {
       if (secret) {
-        await api.updateSecret(secret.id, name.trim(), value, notes.trim());
+        await api.updateSecret(secret.id, name.trim(), value, notes.trim(), url.trim());
       } else {
-        await api.createSecret(categoryId, name.trim(), value, notes.trim());
+        await api.createSecret(categoryId, name.trim(), value, notes.trim(), url.trim());
       }
       onSaved();
       onClose();
@@ -244,6 +264,16 @@ function SecretEditModal({
             {showValue ? "Hide" : "Show"}
           </button>
         </div>
+
+        <label className="mb-1 block text-[12px] text-text-secondary">
+          URL (optional)
+        </label>
+        <input
+          className="mb-4 w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://dashboard.stripe.com/apikeys"
+        />
 
         <label className="mb-1 block text-[12px] text-text-secondary">
           Notes (optional)

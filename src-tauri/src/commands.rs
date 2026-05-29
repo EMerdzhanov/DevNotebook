@@ -324,6 +324,7 @@ pub struct Secret {
     pub name: String,
     pub masked_preview: String,
     pub notes: String,
+    pub url: String,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -334,7 +335,7 @@ pub fn get_secrets(state: State<'_, AppState>, category_id: String) -> Result<Ve
     let conn = guard.as_ref().ok_or("Database not open")?;
 
     let mut stmt = conn
-        .prepare("SELECT id, category_id, name, masked_preview, notes, created_at, updated_at FROM secrets WHERE category_id = ?1 ORDER BY created_at DESC")
+        .prepare("SELECT id, category_id, name, masked_preview, notes, url, created_at, updated_at FROM secrets WHERE category_id = ?1 ORDER BY created_at DESC")
         .map_err(|e| e.to_string())?;
 
     let secrets = stmt
@@ -345,8 +346,9 @@ pub fn get_secrets(state: State<'_, AppState>, category_id: String) -> Result<Ve
                 name: row.get(2)?,
                 masked_preview: row.get(3)?,
                 notes: row.get(4)?,
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                url: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -363,6 +365,7 @@ pub fn create_secret(
     name: String,
     value: String,
     notes: String,
+    url: String,
 ) -> Result<Secret, String> {
     let key_guard = state.encryption_key.lock().map_err(|e| e.to_string())?;
     let key = key_guard.as_ref().ok_or("Vault is locked")?;
@@ -377,8 +380,8 @@ pub fn create_secret(
     let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
-        "INSERT INTO secrets (id, category_id, name, encrypted_value, masked_preview, notes, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![id, category_id, name, encrypted, masked, notes, now, now],
+        "INSERT INTO secrets (id, category_id, name, encrypted_value, masked_preview, notes, url, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![id, category_id, name, encrypted, masked, notes, url, now, now],
     ).map_err(|e| e.to_string())?;
 
     Ok(Secret {
@@ -387,6 +390,7 @@ pub fn create_secret(
         name,
         masked_preview: masked,
         notes,
+        url,
         created_at: now.clone(),
         updated_at: now,
     })
@@ -414,6 +418,7 @@ pub fn update_secret(
     name: String,
     value: String,
     notes: String,
+    url: String,
 ) -> Result<(), String> {
     let key_guard = state.encryption_key.lock().map_err(|e| e.to_string())?;
     let key = key_guard.as_ref().ok_or("Vault is locked")?;
@@ -426,8 +431,8 @@ pub fn update_secret(
     let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
-        "UPDATE secrets SET name = ?1, encrypted_value = ?2, masked_preview = ?3, notes = ?4, updated_at = ?5 WHERE id = ?6",
-        params![name, encrypted, masked, notes, now, id],
+        "UPDATE secrets SET name = ?1, encrypted_value = ?2, masked_preview = ?3, notes = ?4, url = ?5, updated_at = ?6 WHERE id = ?7",
+        params![name, encrypted, masked, notes, url, now, id],
     ).map_err(|e| e.to_string())?;
 
     Ok(())

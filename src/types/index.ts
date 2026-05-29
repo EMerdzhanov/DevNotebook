@@ -24,6 +24,7 @@ export interface Secret {
   name: string;
   masked_preview: string;
   notes: string;
+  url: string;
   created_at: string;
   updated_at: string;
 }

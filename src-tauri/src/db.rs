@@ -91,6 +91,7 @@ impl Database {
                 encrypted_value BLOB NOT NULL,
                 masked_preview TEXT NOT NULL DEFAULT '',
                 notes TEXT DEFAULT '',
+                url TEXT DEFAULT '',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY (category_id) REFERENCES secret_categories(id) ON DELETE CASCADE

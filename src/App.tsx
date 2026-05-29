@@ -491,10 +491,16 @@ export default function App() {
           <SettingsView
             bluetoothStatus={bluetooth.status}
             activeThemeId={activeThemeId}
+            pairing={bluetooth.pairing}
+            pairedDevice={bluetooth.pairedDevice}
+            sensitivity={bluetooth.sensitivity}
             onThemeChange={handleThemeChange}
-            onScanDevices={bluetooth.scanDevices}
-            onPairDevice={bluetooth.pairDevice}
+            onStartPairing={bluetooth.startPairing}
+            onCheckPairingConfirmed={bluetooth.checkPairingConfirmed}
+            onCompletePairing={bluetooth.completePairing}
+            onCancelPairing={bluetooth.cancelPairing}
             onUnpairDevice={bluetooth.unpairDevice}
+            onUpdateSensitivity={bluetooth.updateSensitivity}
             onLockVault={handleLockVault}
           />
         )}

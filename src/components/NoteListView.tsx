@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { Note } from "../types";
 import * as api from "../hooks/useTauri";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface NoteListViewProps {
   folderId: string;
@@ -18,6 +20,8 @@ export default function NoteListView({
   onSelectNote,
   onNotesChanged,
 }: NoteListViewProps) {
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
   const handleCreateNote = async () => {
     try {
       const note = await api.createNote(folderId, projectId, "Untitled");
@@ -73,7 +77,7 @@ export default function NoteListView({
                 className="rounded bg-bg-input px-2.5 py-1 text-[11px] text-status-disconnected opacity-0 transition-opacity hover:bg-status-disconnected hover:text-white group-hover:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDeleteNote(note.id);
+                  setDeleteConfirm(note.id);
                 }}
               >
                 Delete
@@ -82,6 +86,17 @@ export default function NoteListView({
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        title="Delete Note"
+        message="Are you sure you want to delete this note? It will be moved to Trash."
+        onConfirm={() => {
+          if (deleteConfirm) handleDeleteNote(deleteConfirm);
+          setDeleteConfirm(null);
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }

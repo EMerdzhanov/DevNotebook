@@ -3,6 +3,7 @@ import { open as dialogOpen, save as dialogSave } from "@tauri-apps/plugin-dialo
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { FileRecord } from "../types";
 import * as api from "../hooks/useTauri";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface FileListViewProps {
   folderId: string;
@@ -43,6 +44,7 @@ export default function FileListView({
   const [gridView, setGridView] = useState(true);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<FileRecord | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const loadFiles = useCallback(async () => {
     try {
       const data = await api.getFiles(folderId);
@@ -199,7 +201,7 @@ export default function FileListView({
                 onDownload={() => handleDownloadFile(file.id)}
                 onShare={() => handleShareFile(file.id)}
                 onToggleEncrypt={() => handleToggleEncryption(file.id)}
-                onDelete={() => handleDeleteFile(file.id)}
+                onDelete={() => setDeleteConfirm(file.id)}
               />
             ))}
           </div>
@@ -215,12 +217,23 @@ export default function FileListView({
                 onDownload={() => handleDownloadFile(file.id)}
                 onShare={() => handleShareFile(file.id)}
                 onToggleEncrypt={() => handleToggleEncryption(file.id)}
-                onDelete={() => handleDeleteFile(file.id)}
+                onDelete={() => setDeleteConfirm(file.id)}
               />
             ))}
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        title="Delete File"
+        message="Are you sure you want to delete this file? This cannot be undone."
+        onConfirm={() => {
+          if (deleteConfirm) handleDeleteFile(deleteConfirm);
+          setDeleteConfirm(null);
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
 
       {/* Quick Look preview */}
       {previewFile && (

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { TrashItem } from "../types";
 import * as api from "../hooks/useTauri";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface TrashViewProps {
   onRestored: () => void;
@@ -14,6 +15,8 @@ const TYPE_ICONS: Record<string, string> = {
 
 export default function TrashView({ onRestored }: TrashViewProps) {
   const [items, setItems] = useState<TrashItem[]>([]);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [emptyConfirm, setEmptyConfirm] = useState(false);
 
   const loadTrash = useCallback(async () => {
     try {
@@ -68,7 +71,7 @@ export default function TrashView({ onRestored }: TrashViewProps) {
         {items.length > 0 && (
           <button
             className="rounded border border-status-disconnected/50 px-3 py-1.5 text-[12px] text-status-disconnected transition-colors hover:bg-status-disconnected hover:text-white"
-            onClick={handleEmptyTrash}
+            onClick={() => setEmptyConfirm(true)}
           >
             Empty Trash
           </button>
@@ -121,7 +124,7 @@ export default function TrashView({ onRestored }: TrashViewProps) {
                 </button>
                 <button
                   className="rounded bg-bg-input px-3 py-1 text-[11px] text-status-disconnected hover:bg-status-disconnected hover:text-white"
-                  onClick={() => handlePermanentDelete(item.id)}
+                  onClick={() => setDeleteConfirm(item.id)}
                 >
                   Delete Forever
                 </button>
@@ -130,6 +133,30 @@ export default function TrashView({ onRestored }: TrashViewProps) {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        title="Delete Forever"
+        message="This will permanently delete this item. This cannot be undone."
+        confirmLabel="Delete Forever"
+        onConfirm={() => {
+          if (deleteConfirm) handlePermanentDelete(deleteConfirm);
+          setDeleteConfirm(null);
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={emptyConfirm}
+        title="Empty Trash"
+        message="This will permanently delete all items in the trash. This cannot be undone."
+        confirmLabel="Empty Trash"
+        onConfirm={() => {
+          handleEmptyTrash();
+          setEmptyConfirm(false);
+        }}
+        onCancel={() => setEmptyConfirm(false)}
+      />
     </div>
   );
 }

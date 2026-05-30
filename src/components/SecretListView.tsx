@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Secret } from "../types";
 import * as api from "../hooks/useTauri";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface SecretListViewProps {
   categoryId: string;
@@ -16,6 +17,7 @@ export default function SecretListView({
   const [revealedValue, setRevealedValue] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingSecret, setEditingSecret] = useState<Secret | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const loadSecrets = useCallback(async () => {
     try {
@@ -150,7 +152,7 @@ export default function SecretListView({
                 </button>
                 <button
                   className="rounded bg-bg-input px-2.5 py-1 text-[11px] text-status-disconnected transition-colors hover:bg-status-disconnected hover:text-white"
-                  onClick={() => handleDelete(secret.id)}
+                  onClick={() => setDeleteConfirm(secret.id)}
                 >
                   Delete
                 </button>
@@ -171,6 +173,17 @@ export default function SecretListView({
           onSaved={loadSecrets}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        title="Delete Secret"
+        message="Are you sure you want to delete this secret? It will be moved to Trash and can be restored later."
+        onConfirm={() => {
+          if (deleteConfirm) handleDelete(deleteConfirm);
+          setDeleteConfirm(null);
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }

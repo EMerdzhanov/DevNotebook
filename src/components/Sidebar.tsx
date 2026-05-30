@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import type { SecretCategory, NoteFolder, FileFolder, Favorite } from "../types";
+import ConfirmDialog from "./ConfirmDialog";
 
 const SECTION_ICONS: Record<string, string> = {
   "API Keys": "🔑",
@@ -84,6 +85,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(200);
+  const [pendingDelete, setPendingDelete] = useState<{ title: string; action: () => void } | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{
     x: number;
     y: number;
@@ -224,7 +226,7 @@ export default function Sidebar({
                 x: e.clientX, y: e.clientY,
                 items: [
                   { label: favorites.some(f => f.item_id === cat.id) ? "Unpin" : "Pin", action: () => onToggleFavorite(cat.id, "category", cat.name) },
-                  { label: "Delete", danger: true, action: () => onDeleteCategory(cat.id) },
+                  { label: "Delete", danger: true, action: () => setPendingDelete({ title: `Delete "${cat.name}"?`, action: () => onDeleteCategory(cat.id) }) },
                 ],
               });
             }}
@@ -347,7 +349,7 @@ export default function Sidebar({
               setCtxMenu({
                 x: e.clientX, y: e.clientY,
                 items: [
-                  { label: "Delete Folder", danger: true, action: () => onDeleteFileFolder(folder.id) },
+                  { label: "Delete Folder", danger: true, action: () => setPendingDelete({ title: `Delete "${folder.name}" folder?`, action: () => onDeleteFileFolder(folder.id) }) },
                 ],
               });
             }}
@@ -400,7 +402,7 @@ export default function Sidebar({
               setCtxMenu({
                 x: e.clientX, y: e.clientY,
                 items: [
-                  { label: "Delete", danger: true, action: () => onDeleteNoteFolder(folder.id) },
+                  { label: "Delete", danger: true, action: () => setPendingDelete({ title: `Delete "${folder.name}" category?`, action: () => onDeleteNoteFolder(folder.id) }) },
                 ],
               });
             }}
@@ -459,6 +461,17 @@ export default function Sidebar({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={pendingDelete !== null}
+        title={pendingDelete?.title || "Delete"}
+        message="This will delete all contents inside. Items with secrets will be moved to Trash."
+        onConfirm={() => {
+          pendingDelete?.action();
+          setPendingDelete(null);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
 
       {/* Resize handle */}
       <div

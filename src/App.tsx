@@ -20,6 +20,7 @@ import LockScreen from "./components/LockScreen";
 import SettingsView from "./components/SettingsView";
 import FileListView from "./components/FileListView";
 import TrashView from "./components/TrashView";
+import ProjectDashboard from "./components/ProjectDashboard";
 import TodoPanel from "./components/TodoPanel";
 import LibraryPanel from "./components/LibraryPanel";
 import CommandPalette from "./components/CommandPalette";
@@ -211,6 +212,8 @@ export default function App() {
       if (projectList.length > 0) {
         setActiveProjectId(projectList[0].id);
         await loadProjectData(projectList[0].id);
+      } else {
+        setViewState({ view: "dashboard" });
       }
 
       setScreen("main");
@@ -238,17 +241,43 @@ export default function App() {
   };
 
   const handleCloseProject = async (id: string) => {
-    if (projects.length <= 1) return; // Don't close last project
     try {
-      await api.deleteProject(id);
+      await api.closeProject(id);
       const remaining = projects.filter((p) => p.id !== id);
       setProjects(remaining);
-      if (activeProjectId === id && remaining.length > 0) {
-        setActiveProjectId(remaining[0].id);
-        await loadProjectData(remaining[0].id);
+      if (activeProjectId === id) {
+        if (remaining.length > 0) {
+          setActiveProjectId(remaining[0].id);
+          await loadProjectData(remaining[0].id);
+        } else {
+          setActiveProjectId(null);
+          setViewState({ view: "dashboard" });
+        }
       }
     } catch (err) {
       console.error("Failed to close project:", err);
+    }
+  };
+
+  const handleOpenExistingProject = async (id: string) => {
+    try {
+      await api.openProject(id);
+      const openProjects = await api.getProjects();
+      setProjects(openProjects);
+      setActiveProjectId(id);
+      await loadProjectData(id);
+      setViewState(null);
+    } catch (err) {
+      console.error("Failed to open project:", err);
+    }
+  };
+
+  const reloadOpenProjects = async () => {
+    try {
+      const openProjects = await api.getProjects();
+      setProjects(openProjects);
+    } catch (err) {
+      console.error("Failed to reload projects:", err);
     }
   };
 
@@ -461,13 +490,27 @@ export default function App() {
         onCreateProject={handleCreateProject}
         onCloseProject={handleCloseProject}
         onRenameProject={handleRenameProject}
+        onOpenDashboard={() => setViewState(viewState?.view === "dashboard" ? null : { view: "dashboard" })}
+        isDashboardActive={viewState?.view === "dashboard"}
         onOpenSettings={handleOpenSettings}
         isSettingsActive={viewState?.view === "settings"}
         onOpenTrash={() => setViewState(viewState?.view === "trash" ? null : { view: "trash" })}
         isTrashActive={viewState?.view === "trash"}
       />
 
-      {/* Full-screen views (Settings, Trash) */}
+      {/* Full-screen views (Settings, Trash, Dashboard) */}
+      {viewState?.view === "dashboard" && (
+        <div className="flex-1 overflow-hidden">
+          <ProjectDashboard
+            onOpenProject={handleOpenExistingProject}
+            onProjectsChanged={reloadOpenProjects}
+            onOpenLibraryEntry={() => {
+              setViewState(null);
+              setLibraryOpen(true);
+            }}
+          />
+        </div>
+      )}
       {viewState?.view === "settings" && (
         <div className="flex-1 overflow-hidden">
           <SettingsView
@@ -498,7 +541,7 @@ export default function App() {
       )}
 
       {/* Project view (sidebars + content + todo + library) */}
-      {viewState?.view !== "settings" && viewState?.view !== "trash" && (
+      {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && (
         <>
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar */}

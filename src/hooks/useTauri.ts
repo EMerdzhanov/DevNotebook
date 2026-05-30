@@ -11,10 +11,17 @@ export const lockVault = () => invoke<void>("lock_vault");
 
 // Projects
 export const getProjects = () => invoke<Project[]>("get_projects");
+export const getAllProjects = () => invoke<Project[]>("get_all_projects");
 export const createProject = (name: string) =>
   invoke<Project>("create_project", { name });
 export const renameProject = (id: string, name: string) =>
   invoke<void>("rename_project", { id, name });
+export const closeProject = (id: string) =>
+  invoke<void>("close_project", { id });
+export const openProject = (id: string) =>
+  invoke<void>("open_project", { id });
+export const archiveProject = (id: string) =>
+  invoke<void>("archive_project", { id });
 export const deleteProject = (id: string) =>
   invoke<void>("delete_project", { id });
 

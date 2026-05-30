@@ -76,20 +76,19 @@ pub struct Project {
     pub name: String,
     pub icon: String,
     pub directory_path: String,
+    pub is_open: bool,
+    pub is_archived: bool,
     pub sort_order: i32,
     pub created_at: String,
     pub updated_at: String,
 }
 
-#[tauri::command]
-pub fn get_projects(state: State<'_, AppState>) -> Result<Vec<Project>, String> {
-    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
-    let conn = guard.as_ref().ok_or("Database not open")?;
-
-    let mut stmt = conn
-        .prepare("SELECT id, name, icon, directory_path, sort_order, created_at, updated_at FROM projects ORDER BY sort_order")
-        .map_err(|e| e.to_string())?;
-
+fn query_projects(conn: &rusqlite::Connection, where_clause: &str) -> Result<Vec<Project>, String> {
+    let sql = format!(
+        "SELECT id, name, icon, directory_path, is_open, is_archived, sort_order, created_at, updated_at FROM projects {} ORDER BY sort_order",
+        where_clause
+    );
+    let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
     let projects = stmt
         .query_map([], |row| {
             Ok(Project {
@@ -97,16 +96,31 @@ pub fn get_projects(state: State<'_, AppState>) -> Result<Vec<Project>, String> 
                 name: row.get(1)?,
                 icon: row.get(2)?,
                 directory_path: row.get(3)?,
-                sort_order: row.get(4)?,
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
+                is_open: row.get(4)?,
+                is_archived: row.get(5)?,
+                sort_order: row.get(6)?,
+                created_at: row.get(7)?,
+                updated_at: row.get(8)?,
             })
         })
         .map_err(|e| e.to_string())?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
-
     Ok(projects)
+}
+
+#[tauri::command]
+pub fn get_projects(state: State<'_, AppState>) -> Result<Vec<Project>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+    query_projects(conn, "WHERE is_open = 1")
+}
+
+#[tauri::command]
+pub fn get_all_projects(state: State<'_, AppState>) -> Result<Vec<Project>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+    query_projects(conn, "WHERE is_archived = 0")
 }
 
 #[tauri::command]
@@ -132,6 +146,8 @@ pub fn create_project(state: State<'_, AppState>, name: String) -> Result<Projec
         name,
         icon: String::new(),
         directory_path: String::new(),
+        is_open: true,
+        is_archived: false,
         sort_order: max_order + 1,
         created_at: now.clone(),
         updated_at: now,
@@ -152,6 +168,43 @@ pub fn rename_project(state: State<'_, AppState>, id: String, name: String) -> R
     Ok(())
 }
 
+/// Close a project tab (hide from tab bar, keep data)
+#[tauri::command]
+pub fn close_project(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    conn.execute("UPDATE projects SET is_open = 0 WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Reopen a closed project in the tab bar
+#[tauri::command]
+pub fn open_project(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    conn.execute("UPDATE projects SET is_open = 1 WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Archive a project (hidden from dashboard, can be restored)
+#[tauri::command]
+pub fn archive_project(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    conn.execute("UPDATE projects SET is_archived = 1, is_open = 0 WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Permanently delete a project and all its data
 #[tauri::command]
 pub fn delete_project(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
@@ -162,6 +215,14 @@ pub fn delete_project(state: State<'_, AppState>, id: String) -> Result<(), Stri
     conn.execute("DELETE FROM secret_categories WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM notes WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM note_folders WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM file_folders WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM todos WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM favorites WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM projects WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;

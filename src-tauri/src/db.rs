@@ -68,6 +68,8 @@ impl Database {
                 name TEXT NOT NULL,
                 icon TEXT DEFAULT '',
                 directory_path TEXT DEFAULT '',
+                is_open INTEGER NOT NULL DEFAULT 1,
+                is_archived INTEGER NOT NULL DEFAULT 0,
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
@@ -224,6 +226,13 @@ impl Database {
         );
         let _ = conn.execute_batch(
             "ALTER TABLE todos ADD COLUMN url TEXT DEFAULT '';"
+        );
+        // Add is_open and is_archived to projects if they don't exist
+        let _ = conn.execute_batch(
+            "ALTER TABLE projects ADD COLUMN is_open INTEGER NOT NULL DEFAULT 1;"
+        );
+        let _ = conn.execute_batch(
+            "ALTER TABLE projects ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0;"
         );
 
         Ok(())

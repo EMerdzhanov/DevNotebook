@@ -3,6 +3,8 @@ export interface Project {
   name: string;
   icon: string;
   directory_path: string;
+  is_open: boolean;
+  is_archived: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -132,7 +134,8 @@ export type ViewState =
   | { view: "note"; noteId: string }
   | { view: "files"; folderId: string }
   | { view: "settings" }
-  | { view: "trash" };
+  | { view: "trash" }
+  | { view: "dashboard" };
 
 export type AppScreen = "loading" | "setup" | "login" | "main";
 

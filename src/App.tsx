@@ -386,7 +386,7 @@ export default function App() {
   };
 
   const handleOpenSettings = () => {
-    setViewState({ view: "settings" });
+    setViewState(viewState?.view === "settings" ? null : { view: "settings" });
   };
 
   const handleLockVault = async () => {
@@ -463,82 +463,13 @@ export default function App() {
         onRenameProject={handleRenameProject}
         onOpenSettings={handleOpenSettings}
         isSettingsActive={viewState?.view === "settings"}
-        onOpenTrash={() => setViewState({ view: "trash" })}
+        onOpenTrash={() => setViewState(viewState?.view === "trash" ? null : { view: "trash" })}
         isTrashActive={viewState?.view === "trash"}
       />
 
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <Sidebar
-          categories={categories}
-          noteFolders={noteFolders}
-          fileFolders={fileFolders}
-          activeCategoryId={activeCategoryId}
-          activeNoteFolderId={viewState?.view === "notes" ? viewState.noteFolderId : null}
-          activeFolderId={activeFolderId}
-          availableTemplates={availableTemplates}
-          availableNoteFolderTemplates={availableNoteFolderTemplates}
-          availableFileFolderTemplates={availableFileFolderTemplates}
-          onSelectCategory={handleSelectCategory}
-          onSelectNoteFolder={handleSelectNoteFolder}
-          onSelectFileFolder={handleSelectFileFolder}
-          onAddSection={handleAddSection}
-          onAddNoteFolder={handleAddNoteFolder}
-          onAddFileFolder={handleAddFileFolder}
-          favorites={favorites}
-          onQuickCopy={handleQuickCopy}
-          onSelectFavorite={handleSelectFavorite}
-          onDeleteCategory={handleDeleteCategory}
-          onDeleteNoteFolder={handleDeleteNoteFolder}
-          onDeleteFileFolder={handleDeleteFileFolder}
-          onToggleFavorite={handleToggleFavorite}
-        />
-
-        {/* Content Area */}
-        {viewState?.view === "secrets" && activeCategory && (
-          <SecretListView
-            categoryId={activeCategory.id}
-            categoryName={activeCategory.name}
-          />
-        )}
-        {viewState?.view === "notes" && viewState.noteFolderId && activeProjectId && (() => {
-          const folder = noteFolders.find((f) => f.id === viewState.noteFolderId);
-          return (
-            <NoteListView
-              folderId={viewState.noteFolderId}
-              folderName={folder?.name || "Notes"}
-              projectId={activeProjectId}
-              notes={currentNotes}
-              onSelectNote={handleSelectNote}
-              onNotesChanged={async () => {
-                const updated = await api.getNotes(viewState.noteFolderId);
-                setCurrentNotes(updated);
-                const updatedFolders = await api.getNoteFolders(activeProjectId);
-                setNoteFolders(updatedFolders);
-              }}
-            />
-          );
-        })()}
-        {viewState?.view === "note" && activeNoteId && (() => {
-          const note = currentNotes.find((n) => n.id === activeNoteId);
-          return note ? (
-            <NoteEditor
-              noteId={activeNoteId}
-              projectId={note.project_id}
-              initialTitle={note.title}
-              initialContent={note.content}
-            />
-          ) : null;
-        })()}
-        {viewState?.view === "files" && activeFolder && activeProjectId && (
-          <FileListView
-            folderId={activeFolder.id}
-            folderName={activeFolder.name}
-            projectId={activeProjectId}
-          />
-        )}
-        {viewState?.view === "settings" && (
+      {/* Full-screen views (Settings, Trash) */}
+      {viewState?.view === "settings" && (
+        <div className="flex-1 overflow-hidden">
           <SettingsView
             bluetoothStatus={bluetooth.status}
             activeThemeId={activeThemeId}
@@ -554,34 +485,113 @@ export default function App() {
             onUpdateSensitivity={bluetooth.updateSensitivity}
             onLockVault={handleLockVault}
           />
-        )}
-        {viewState?.view === "trash" && (
+        </div>
+      )}
+      {viewState?.view === "trash" && (
+        <div className="flex-1 overflow-hidden">
           <TrashView
             onRestored={() => {
               if (activeProjectId) loadProjectData(activeProjectId);
             }}
           />
-        )}
-        {!viewState && (
-          <div className="flex flex-1 items-center justify-center text-text-muted">
-            Select a category or note from the sidebar
+        </div>
+      )}
+
+      {/* Project view (sidebars + content + todo + library) */}
+      {viewState?.view !== "settings" && viewState?.view !== "trash" && (
+        <>
+          <div className="flex flex-1 overflow-hidden">
+            {/* Sidebar */}
+            <Sidebar
+              categories={categories}
+              noteFolders={noteFolders}
+              fileFolders={fileFolders}
+              activeCategoryId={activeCategoryId}
+              activeNoteFolderId={viewState?.view === "notes" ? viewState.noteFolderId : null}
+              activeFolderId={activeFolderId}
+              availableTemplates={availableTemplates}
+              availableNoteFolderTemplates={availableNoteFolderTemplates}
+              availableFileFolderTemplates={availableFileFolderTemplates}
+              onSelectCategory={handleSelectCategory}
+              onSelectNoteFolder={handleSelectNoteFolder}
+              onSelectFileFolder={handleSelectFileFolder}
+              onAddSection={handleAddSection}
+              onAddNoteFolder={handleAddNoteFolder}
+              onAddFileFolder={handleAddFileFolder}
+              favorites={favorites}
+              onQuickCopy={handleQuickCopy}
+              onSelectFavorite={handleSelectFavorite}
+              onDeleteCategory={handleDeleteCategory}
+              onDeleteNoteFolder={handleDeleteNoteFolder}
+              onDeleteFileFolder={handleDeleteFileFolder}
+              onToggleFavorite={handleToggleFavorite}
+            />
+
+            {/* Content Area */}
+            {viewState?.view === "secrets" && activeCategory && (
+              <SecretListView
+                categoryId={activeCategory.id}
+                categoryName={activeCategory.name}
+              />
+            )}
+            {viewState?.view === "notes" && viewState.noteFolderId && activeProjectId && (() => {
+              const folder = noteFolders.find((f) => f.id === viewState.noteFolderId);
+              return (
+                <NoteListView
+                  folderId={viewState.noteFolderId}
+                  folderName={folder?.name || "Notes"}
+                  projectId={activeProjectId}
+                  notes={currentNotes}
+                  onSelectNote={handleSelectNote}
+                  onNotesChanged={async () => {
+                    const updated = await api.getNotes(viewState.noteFolderId);
+                    setCurrentNotes(updated);
+                    const updatedFolders = await api.getNoteFolders(activeProjectId);
+                    setNoteFolders(updatedFolders);
+                  }}
+                />
+              );
+            })()}
+            {viewState?.view === "note" && activeNoteId && (() => {
+              const note = currentNotes.find((n) => n.id === activeNoteId);
+              return note ? (
+                <NoteEditor
+                  noteId={activeNoteId}
+                  projectId={note.project_id}
+                  initialTitle={note.title}
+                  initialContent={note.content}
+                />
+              ) : null;
+            })()}
+            {viewState?.view === "files" && activeFolder && activeProjectId && (
+              <FileListView
+                folderId={activeFolder.id}
+                folderName={activeFolder.name}
+                projectId={activeProjectId}
+              />
+            )}
+            {!viewState && (
+              <div className="flex flex-1 items-center justify-center text-text-muted">
+                Select a category or note from the sidebar
+              </div>
+            )}
+
+            {/* Todo Panel (right sidebar) */}
+            <TodoPanel
+              projectId={activeProjectId}
+              isOpen={todoPanelOpen}
+              onToggle={() => setTodoPanelOpen(!todoPanelOpen)}
+            />
           </div>
-        )}
 
-        {/* Todo Panel (right sidebar) */}
-        <TodoPanel
-          projectId={activeProjectId}
-          isOpen={todoPanelOpen}
-          onToggle={() => setTodoPanelOpen(!todoPanelOpen)}
-        />
-      </div>
-
-      {/* Library Panel */}
-      <LibraryPanel
-        projectId={activeProjectId}
-        isOpen={libraryOpen}
-        onToggle={() => setLibraryOpen(!libraryOpen)}
-      />
+          {/* Library Panel */}
+          <LibraryPanel
+            projectId={activeProjectId}
+            isOpen={libraryOpen}
+            onToggle={() => setLibraryOpen(!libraryOpen)}
+          />
+        </>
+      )}
 
       {/* Status Bar */}
       <StatusBar

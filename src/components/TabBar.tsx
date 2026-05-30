@@ -64,7 +64,7 @@ export default function TabBar({
             key={project.id}
             className={`group flex min-w-[120px] max-w-[200px] cursor-pointer items-center gap-2 rounded-t-md px-3 py-1.5 text-[13px] transition-colors ${
               isActive
-                ? "bg-bg-base text-text-primary"
+                ? "paper-texture text-text-primary"
                 : "text-text-muted hover:text-text-secondary"
             }`}
             onClick={() => onSelectProject(project.id)}

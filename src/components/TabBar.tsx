@@ -16,6 +16,7 @@ interface TabBarProps {
   isSettingsActive: boolean;
   onOpenTrash: () => void;
   isTrashActive: boolean;
+  sidebarOffset: number;
 }
 
 export default function TabBar({
@@ -33,6 +34,7 @@ export default function TabBar({
   isSettingsActive,
   onOpenTrash,
   isTrashActive,
+  sidebarOffset,
 }: TabBarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -61,7 +63,8 @@ export default function TabBar({
 
   return (
     <div
-      className="flex items-end bg-bg-tabbar px-2 pt-1.5"
+      className="flex items-end bg-bg-tabbar pr-2 pt-1.5"
+      style={{ paddingLeft: sidebarOffset }}
       data-tauri-drag-region
       onClick={() => setContextMenu(null)}
     >

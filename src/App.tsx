@@ -64,6 +64,8 @@ export default function App() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [todoPanelOpen, setTodoPanelOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(220);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
@@ -481,27 +483,33 @@ export default function App() {
   const activeCategory = categories.find((c) => c.id === activeCategoryId);
   const activeFolder = fileFolders.find((f) => f.id === activeFolderId);
 
+  const tabBar = (
+    <TabBar
+      projects={projects}
+      activeProjectId={activeProjectId}
+      onSelectProject={handleSelectProject}
+      onCreateProject={handleCreateProject}
+      onCloseProject={handleCloseProject}
+      onRenameProject={handleRenameProject}
+      onOpenDashboard={() => setViewState(viewState?.view === "dashboard" ? null : { view: "dashboard" })}
+      isDashboardActive={viewState?.view === "dashboard"}
+      onOpenLibrary={() => setViewState(viewState?.view === "library" ? null : { view: "library" })}
+      isLibraryActive={viewState?.view === "library"}
+      onOpenSettings={handleOpenSettings}
+      isSettingsActive={viewState?.view === "settings"}
+      onOpenTrash={() => setViewState(viewState?.view === "trash" ? null : { view: "trash" })}
+      isTrashActive={viewState?.view === "trash"}
+      sidebarOffset={sidebarCollapsed ? 44 : sidebarWidth}
+    />
+  );
+
   return (
     <div className="flex h-screen w-screen flex-col bg-bg-base">
-      {/* Tab Bar */}
-      <TabBar
-        projects={projects}
-        activeProjectId={activeProjectId}
-        onSelectProject={handleSelectProject}
-        onCreateProject={handleCreateProject}
-        onCloseProject={handleCloseProject}
-        onRenameProject={handleRenameProject}
-        onOpenDashboard={() => setViewState(viewState?.view === "dashboard" ? null : { view: "dashboard" })}
-        isDashboardActive={viewState?.view === "dashboard"}
-        onOpenLibrary={() => setViewState(viewState?.view === "library" ? null : { view: "library" })}
-        isLibraryActive={viewState?.view === "library"}
-        onOpenSettings={handleOpenSettings}
-        isSettingsActive={viewState?.view === "settings"}
-        onOpenTrash={() => setViewState(viewState?.view === "trash" ? null : { view: "trash" })}
-        isTrashActive={viewState?.view === "trash"}
-      />
 
-      {/* Full-screen views (Settings, Trash, Dashboard) */}
+      {/* Tab bar — always full width at top */}
+      {tabBar}
+
+      {/* Full-screen views */}
       {viewState?.view === "dashboard" && (
         <div className="flex-1 overflow-y-auto">
           <ProjectDashboard
@@ -551,7 +559,7 @@ export default function App() {
       {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && viewState?.view !== "library" && (
         <>
           <div className="flex flex-1 overflow-hidden">
-            {/* Sidebar */}
+            {/* Sidebar — spans full height including tab bar area */}
             <Sidebar
               categories={categories}
               noteFolders={noteFolders}
@@ -575,10 +583,16 @@ export default function App() {
               onDeleteNoteFolder={handleDeleteNoteFolder}
               onDeleteFileFolder={handleDeleteFileFolder}
               onToggleFavorite={handleToggleFavorite}
+              width={sidebarWidth}
+              onWidthChange={setSidebarWidth}
+              collapsed={sidebarCollapsed}
+              onCollapsedChange={setSidebarCollapsed}
             />
 
-            {/* Content Area */}
-            {viewState?.view === "secrets" && activeCategory && (
+            {/* Content column */}
+            <div className="flex flex-1 flex-col overflow-hidden">
+              {/* Content Area */}
+              {viewState?.view === "secrets" && activeCategory && (
               <SecretListView
                 categoryId={activeCategory.id}
                 categoryName={activeCategory.name}
@@ -625,6 +639,7 @@ export default function App() {
                 Select a category or note from the sidebar
               </div>
             )}
+            </div>
 
             {/* Todo Panel (right sidebar) */}
             <TodoPanel

@@ -57,6 +57,10 @@ interface SidebarProps {
   onDeleteNoteFolder: (id: string) => void;
   onDeleteFileFolder: (id: string) => void;
   onToggleFavorite: (itemId: string, itemType: string, itemName: string) => void;
+  width: number;
+  onWidthChange: (width: number) => void;
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
 }
 
 export default function Sidebar({
@@ -82,9 +86,11 @@ export default function Sidebar({
   onDeleteNoteFolder,
   onDeleteFileFolder,
   onToggleFavorite,
+  width: sidebarWidth,
+  onWidthChange: setSidebarWidth,
+  collapsed,
+  onCollapsedChange: setCollapsed,
 }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(220);
   const [pendingDelete, setPendingDelete] = useState<{ title: string; action: () => void } | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{
     x: number;

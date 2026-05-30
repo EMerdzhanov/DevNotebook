@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background rounded square -->
+  <rect x="0" y="0" width="1024" height="1024" rx="205" fill="#151515"/>
+  <rect x="12" y="12" width="1000" height="1000" rx="198" fill="none" stroke="#333333" stroke-width="12"/>
+
+  <!-- Left angle bracket - amber -->
+  <path d="M153.6 512 L294.4 320 L294.4 371.2 L204.8 512 L294.4 652.8 L294.4 704 Z" fill="#d4a029"/>
+
+  <!-- Right angle bracket - amber -->
+  <path d="M870.4 512 L729.6 320 L729.6 371.2 L819.2 512 L729.6 652.8 L729.6 704 Z" fill="#d4a029"/>
+
+  <!-- Notebook body -->
+  <rect x="345.6" y="243.2" width="332.8" height="537.6" rx="25.6" fill="#222222" stroke="#e0e0e0" stroke-width="16"/>
+
+  <!-- Spiral binding -->
+  <circle cx="371.2" cy="294.4" r="19.2" fill="none" stroke="#e0e0e0" stroke-width="9.6"/>
+  <circle cx="371.2" cy="358.4" r="19.2" fill="none" stroke="#e0e0e0" stroke-width="9.6"/>
+  <circle cx="371.2" cy="422.4" r="19.2" fill="none" stroke="#e0e0e0" stroke-width="9.6"/>
+  <circle cx="371.2" cy="486.4" r="19.2" fill="none" stroke="#e0e0e0" stroke-width="9.6"/>
+  <circle cx="371.2" cy="550.4" r="19.2" fill="none" stroke="#e0e0e0" stroke-width="9.6"/>
+  <circle cx="371.2" cy="614.4" r="19.2" fill="none" stroke="#e0e0e0" stroke-width="9.6"/>
+  <circle cx="371.2" cy="678.4" r="19.2" fill="none" stroke="#e0e0e0" stroke-width="9.6"/>
+
+  <!-- Amber code lines - varied indentation suggesting syntax -->
+  <line x1="422.4" y1="320" x2="550.4" y2="320" stroke="#d4a029" stroke-width="12.8" stroke-linecap="round"/>
+  <line x1="448" y1="384" x2="627.2" y2="384" stroke="#d4a029" stroke-width="9.6" stroke-linecap="round" opacity="0.7"/>
+  <line x1="448" y1="448" x2="588.8" y2="448" stroke="#d4a029" stroke-width="9.6" stroke-linecap="round" opacity="0.7"/>
+  <line x1="422.4" y1="512" x2="563.2" y2="512" stroke="#d4a029" stroke-width="12.8" stroke-linecap="round"/>
+  <line x1="448" y1="576" x2="640" y2="576" stroke="#d4a029" stroke-width="9.6" stroke-linecap="round" opacity="0.7"/>
+  <line x1="422.4" y1="640" x2="499.2" y2="640" stroke="#d4a029" stroke-width="12.8" stroke-linecap="round"/>
+</svg>

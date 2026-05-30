@@ -153,6 +153,22 @@ impl Database {
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS todos (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                url TEXT DEFAULT '',
+                is_completed INTEGER NOT NULL DEFAULT 0,
+                priority TEXT NOT NULL DEFAULT 'medium',
+                due_date TEXT DEFAULT '',
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                completed_at TEXT DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            );
+
             CREATE TABLE IF NOT EXISTS tags (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE
@@ -180,6 +196,13 @@ impl Database {
         // Add url to secrets if it doesn't exist (migration for existing DBs)
         let _ = conn.execute_batch(
             "ALTER TABLE secrets ADD COLUMN url TEXT DEFAULT '';"
+        );
+        // Add description and url to todos if they don't exist (migration for existing DBs)
+        let _ = conn.execute_batch(
+            "ALTER TABLE todos ADD COLUMN description TEXT DEFAULT '';"
+        );
+        let _ = conn.execute_batch(
+            "ALTER TABLE todos ADD COLUMN url TEXT DEFAULT '';"
         );
 
         Ok(())

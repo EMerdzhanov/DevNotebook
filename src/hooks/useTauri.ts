@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Project, SecretCategory, Secret, Note, NoteFolder, FileFolder, FileRecord, Favorite, Tag } from "../types";
+import type { Project, SecretCategory, Secret, Note, NoteFolder, FileFolder, FileRecord, Favorite, Tag, Todo } from "../types";
 
 // Auth
 export const checkVaultExists = () => invoke<boolean>("check_vault_exists");
@@ -108,6 +108,20 @@ export const exportFile = (fileId: string, destination: string) =>
 export const shareFile = (fileId: string) =>
   invoke<void>("share_file", { fileId });
 export const cleanupTempFiles = () => invoke<void>("cleanup_temp_files");
+
+// Todos
+export const getTodos = (projectId: string) =>
+  invoke<Todo[]>("get_todos", { projectId });
+export const createTodo = (projectId: string, title: string, description: string, url: string, priority: string, dueDate: string) =>
+  invoke<Todo>("create_todo", { projectId, title, description, url, priority, dueDate });
+export const toggleTodo = (id: string) =>
+  invoke<boolean>("toggle_todo", { id });
+export const updateTodo = (id: string, title: string, description: string, url: string, priority: string, dueDate: string) =>
+  invoke<void>("update_todo", { id, title, description, url, priority, dueDate });
+export const deleteTodo = (id: string) =>
+  invoke<void>("delete_todo", { id });
+export const clearCompletedTodos = (projectId: string) =>
+  invoke<void>("clear_completed_todos", { projectId });
 
 // Reorder
 export const reorderItems = (table: string, ids: string[]) =>

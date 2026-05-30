@@ -767,6 +767,170 @@ pub fn toggle_favorite(
     }
 }
 
+// ── Todo Commands ──
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Todo {
+    pub id: String,
+    pub project_id: String,
+    pub title: String,
+    pub description: String,
+    pub url: String,
+    pub is_completed: bool,
+    pub priority: String,
+    pub due_date: String,
+    pub sort_order: i32,
+    pub completed_at: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[tauri::command]
+pub fn get_todos(state: State<'_, AppState>, project_id: String) -> Result<Vec<Todo>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, project_id, title, description, url, is_completed, priority, due_date, sort_order, completed_at, created_at, updated_at \
+             FROM todos WHERE project_id = ?1 ORDER BY is_completed ASC, sort_order ASC, created_at DESC"
+        )
+        .map_err(|e| e.to_string())?;
+
+    let todos = stmt
+        .query_map(params![project_id], |row| {
+            Ok(Todo {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                title: row.get(2)?,
+                description: row.get(3)?,
+                url: row.get(4)?,
+                is_completed: row.get(5)?,
+                priority: row.get(6)?,
+                due_date: row.get(7)?,
+                sort_order: row.get(8)?,
+                completed_at: row.get(9)?,
+                created_at: row.get(10)?,
+                updated_at: row.get(11)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(todos)
+}
+
+#[tauri::command]
+pub fn create_todo(
+    state: State<'_, AppState>,
+    project_id: String,
+    title: String,
+    description: String,
+    url: String,
+    priority: String,
+    due_date: String,
+) -> Result<Todo, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    let max_order: i32 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(sort_order), -1) FROM todos WHERE project_id = ?1",
+            params![project_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT INTO todos (id, project_id, title, description, url, priority, due_date, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![id, project_id, title, description, url, priority, due_date, max_order + 1, now, now],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(Todo {
+        id,
+        project_id,
+        title,
+        description,
+        url,
+        is_completed: false,
+        priority,
+        due_date,
+        sort_order: max_order + 1,
+        completed_at: String::new(),
+        created_at: now.clone(),
+        updated_at: now,
+    })
+}
+
+#[tauri::command]
+pub fn toggle_todo(state: State<'_, AppState>, id: String) -> Result<bool, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let is_completed: bool = conn
+        .query_row("SELECT is_completed FROM todos WHERE id = ?1", params![id], |row| row.get(0))
+        .map_err(|e| e.to_string())?;
+
+    let new_completed = !is_completed;
+    let now = chrono::Utc::now().to_rfc3339();
+    let completed_at = if new_completed { now.clone() } else { String::new() };
+
+    conn.execute(
+        "UPDATE todos SET is_completed = ?1, completed_at = ?2, updated_at = ?3 WHERE id = ?4",
+        params![new_completed, completed_at, now, id],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(new_completed)
+}
+
+#[tauri::command]
+pub fn update_todo(
+    state: State<'_, AppState>,
+    id: String,
+    title: String,
+    description: String,
+    url: String,
+    priority: String,
+    due_date: String,
+) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+    let now = chrono::Utc::now().to_rfc3339();
+
+    conn.execute(
+        "UPDATE todos SET title = ?1, description = ?2, url = ?3, priority = ?4, due_date = ?5, updated_at = ?6 WHERE id = ?7",
+        params![title, description, url, priority, due_date, now, id],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_todo(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    conn.execute("DELETE FROM todos WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn clear_completed_todos(state: State<'_, AppState>, project_id: String) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    conn.execute("DELETE FROM todos WHERE project_id = ?1 AND is_completed = 1", params![project_id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 // ── Tags Commands ──
 
 #[derive(Serialize, Deserialize, Clone)]

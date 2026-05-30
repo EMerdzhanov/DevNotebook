@@ -130,7 +130,7 @@ export default function Sidebar({
     return (
       <div className="flex w-8 flex-col items-center border-r border-border-subtle bg-bg-sidebar py-3">
         <button
-          className="text-[10px] text-text-dim hover:text-accent"
+          className="text-[12px] text-accent hover:text-accent/80"
           onClick={() => setCollapsed(false)}
           title="Expand sidebar"
         >
@@ -158,17 +158,6 @@ export default function Sidebar({
       className="relative flex flex-col border-r border-border-subtle bg-bg-sidebar"
       style={{ width: sidebarWidth }}
     >
-      {/* Collapse toggle */}
-      <div className="flex items-center justify-end px-2 py-1">
-        <button
-          className="text-[10px] text-text-dim hover:text-accent"
-          onClick={() => setCollapsed(true)}
-          title="Collapse sidebar"
-        >
-          &lsaquo;
-        </button>
-      </div>
-
       <div className="flex-1 overflow-y-auto">
         {/* Pinned/Favorites Section */}
         {favorites.length > 0 && (
@@ -193,8 +182,17 @@ export default function Sidebar({
         )}
 
         {/* Secrets Section */}
-        <div className="px-4 py-1.5 text-[10px] font-medium uppercase tracking-wider text-accent">
-          Secrets
+        <div className="flex items-center justify-between border-b border-border-subtle px-4 py-2.5">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-accent">
+            Secrets
+          </span>
+          <button
+            className="text-[12px] text-accent hover:text-accent/80"
+            onClick={() => setCollapsed(true)}
+            title="Collapse sidebar"
+          >
+            &lsaquo;
+          </button>
         </div>
         {categories.length === 0 && !menuOpen && (
           <div className="px-4 py-2 text-[12px] text-text-dim">

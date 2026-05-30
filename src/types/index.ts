@@ -86,6 +86,21 @@ export interface Tag {
   name: string;
 }
 
+export interface Todo {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  url: string;
+  is_completed: boolean;
+  priority: string;
+  due_date: string;
+  sort_order: number;
+  completed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export type SidebarItem =
   | { type: "category"; data: SecretCategory }
   | { type: "note"; data: Note };

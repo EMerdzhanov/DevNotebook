@@ -23,6 +23,7 @@ const shortcuts = [
     { keys: ["Cmd", "Shift", "9"], description: "Ordered list" },
   ]},
   { category: "App", items: [
+    { keys: ["Cmd", "T"], description: "Toggle To Do panel" },
     { keys: ["Cmd", "L"], description: "Lock vault" },
     { keys: ["Cmd", ","], description: "Open settings" },
   ]},

@@ -19,6 +19,7 @@ import NoteListView from "./components/NoteListView";
 import LockScreen from "./components/LockScreen";
 import SettingsView from "./components/SettingsView";
 import FileListView from "./components/FileListView";
+import TodoPanel from "./components/TodoPanel";
 import CommandPalette from "./components/CommandPalette";
 import KeyboardShortcuts from "./components/KeyboardShortcuts";
 import UndoToast from "./components/UndoToast";
@@ -58,6 +59,7 @@ export default function App() {
   const [availableFileFolderTemplates, setAvailableFileFolderTemplates] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [todoPanelOpen, setTodoPanelOpen] = useState(true);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
 
@@ -131,6 +133,9 @@ export default function App() {
       } else if (meta && e.key === ",") {
         e.preventDefault();
         setViewState({ view: "settings" });
+      } else if (meta && e.key === "t" && screen === "main") {
+        e.preventDefault();
+        setTodoPanelOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -547,6 +552,13 @@ export default function App() {
             Select a category or note from the sidebar
           </div>
         )}
+
+        {/* Todo Panel (right sidebar) */}
+        <TodoPanel
+          projectId={activeProjectId}
+          isOpen={todoPanelOpen}
+          onToggle={() => setTodoPanelOpen(!todoPanelOpen)}
+        />
       </div>
 
       {/* Status Bar */}

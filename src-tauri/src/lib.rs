@@ -3,6 +3,7 @@ mod commands;
 mod crypto;
 mod db;
 mod files;
+mod library;
 mod pairing;
 mod proximity;
 mod state;
@@ -100,6 +101,11 @@ pub fn run() {
             commands::bluetooth_paired_device,
             commands::bluetooth_set_sensitivity,
             commands::bluetooth_get_sensitivity,
+            library::get_library_entries,
+            library::create_library_entry,
+            library::update_library_entry,
+            library::delete_library_entry,
+            library::search_library,
             files::get_suggested_file_folders,
             files::create_file_folder,
             files::get_file_folders,

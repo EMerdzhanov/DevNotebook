@@ -101,6 +101,18 @@ export interface Todo {
   updated_at: string;
 }
 
+export interface LibraryEntry {
+  id: string;
+  project_id: string;
+  title: string;
+  content: string;
+  entry_type: string;
+  is_global: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export type SidebarItem =
   | { type: "category"; data: SecretCategory }
   | { type: "note"; data: Note };

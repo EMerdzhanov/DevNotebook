@@ -24,6 +24,7 @@ const shortcuts = [
   ]},
   { category: "App", items: [
     { keys: ["Cmd", "T"], description: "Toggle To Do panel" },
+    { keys: ["Cmd", "B"], description: "Toggle Library panel" },
     { keys: ["Cmd", "L"], description: "Lock vault" },
     { keys: ["Cmd", ","], description: "Open settings" },
   ]},

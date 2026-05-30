@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Project, SecretCategory, Secret, Note, NoteFolder, FileFolder, FileRecord, Favorite, Tag, Todo } from "../types";
+import type { Project, SecretCategory, Secret, Note, NoteFolder, FileFolder, FileRecord, Favorite, Tag, Todo, LibraryEntry } from "../types";
 
 // Auth
 export const checkVaultExists = () => invoke<boolean>("check_vault_exists");
@@ -122,6 +122,18 @@ export const deleteTodo = (id: string) =>
   invoke<void>("delete_todo", { id });
 export const clearCompletedTodos = (projectId: string) =>
   invoke<void>("clear_completed_todos", { projectId });
+
+// Library
+export const getLibraryEntries = (projectId: string) =>
+  invoke<LibraryEntry[]>("get_library_entries", { projectId });
+export const createLibraryEntry = (projectId: string, title: string, entryType: string, isGlobal: boolean) =>
+  invoke<LibraryEntry>("create_library_entry", { projectId, title, entryType, isGlobal });
+export const updateLibraryEntry = (id: string, title: string, content: string) =>
+  invoke<void>("update_library_entry", { id, title, content });
+export const deleteLibraryEntry = (id: string) =>
+  invoke<void>("delete_library_entry", { id });
+export const searchLibrary = (query: string) =>
+  invoke<LibraryEntry[]>("search_library", { query });
 
 // Reorder
 export const reorderItems = (table: string, ids: string[]) =>

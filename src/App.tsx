@@ -20,6 +20,7 @@ import LockScreen from "./components/LockScreen";
 import SettingsView from "./components/SettingsView";
 import FileListView from "./components/FileListView";
 import TodoPanel from "./components/TodoPanel";
+import LibraryPanel from "./components/LibraryPanel";
 import CommandPalette from "./components/CommandPalette";
 import KeyboardShortcuts from "./components/KeyboardShortcuts";
 import UndoToast from "./components/UndoToast";
@@ -60,6 +61,7 @@ export default function App() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [todoPanelOpen, setTodoPanelOpen] = useState(true);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
 
@@ -136,6 +138,9 @@ export default function App() {
       } else if (meta && e.key === "t" && screen === "main") {
         e.preventDefault();
         setTodoPanelOpen((v) => !v);
+      } else if (meta && e.key === "b" && screen === "main") {
+        e.preventDefault();
+        setLibraryOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -560,6 +565,13 @@ export default function App() {
           onToggle={() => setTodoPanelOpen(!todoPanelOpen)}
         />
       </div>
+
+      {/* Library Panel */}
+      <LibraryPanel
+        projectId={activeProjectId}
+        isOpen={libraryOpen}
+        onToggle={() => setLibraryOpen(!libraryOpen)}
+      />
 
       {/* Status Bar */}
       <StatusBar

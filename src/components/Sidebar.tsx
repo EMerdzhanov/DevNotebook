@@ -84,7 +84,7 @@ export default function Sidebar({
   onToggleFavorite,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(200);
+  const [sidebarWidth, setSidebarWidth] = useState(220);
   const [pendingDelete, setPendingDelete] = useState<{ title: string; action: () => void } | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{
     x: number;

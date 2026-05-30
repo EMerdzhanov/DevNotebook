@@ -24,6 +24,8 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
   const [todos, setTodos] = useState<Todo[]>([]);
   const [panelWidth, setPanelWidth] = useState(350);
   const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newUrl, setNewUrl] = useState("");
   const [newPriority, setNewPriority] = useState("medium");
   const [showCompleted, setShowCompleted] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -74,8 +76,10 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
   const handleAdd = async () => {
     if (!projectId || !newTitle.trim()) return;
     try {
-      await api.createTodo(projectId, newTitle.trim(), "", "", newPriority, "");
+      await api.createTodo(projectId, newTitle.trim(), newDesc.trim(), newUrl.trim(), newPriority, "");
       setNewTitle("");
+      setNewDesc("");
+      setNewUrl("");
       setNewPriority("medium");
       await loadTodos();
       inputRef.current?.focus();
@@ -168,19 +172,34 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
 
       {/* Add todo */}
       <div className="border-b border-border-subtle px-3 py-2.5">
-        <div className="flex items-center gap-1.5">
-          <input
-            ref={inputRef}
-            className="flex-1 rounded border border-border bg-bg-input px-2.5 py-1.5 text-[12px] text-text-primary outline-none placeholder:text-text-dim focus:border-accent"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAdd();
-            }}
-            placeholder="Add a task..."
-          />
+        <div className="flex items-start gap-1.5">
+          <div className="flex-1">
+            <input
+              ref={inputRef}
+              className="w-full rounded border border-border bg-bg-input px-2.5 py-1.5 text-[13px] text-text-primary outline-none placeholder:text-text-dim focus:border-accent"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) handleAdd();
+              }}
+              placeholder="Task title..."
+            />
+            <textarea
+              className="mt-1.5 w-full rounded border border-border bg-bg-input px-2.5 py-1.5 text-[12px] text-text-primary outline-none placeholder:text-text-dim focus:border-accent"
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              placeholder="Description (optional)"
+              rows={2}
+            />
+            <input
+              className="mt-1.5 w-full rounded border border-border bg-bg-input px-2.5 py-1.5 text-[12px] text-text-primary outline-none placeholder:text-text-dim focus:border-accent"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              placeholder="Link (optional)"
+            />
+          </div>
           <button
-            className="rounded bg-accent px-2 py-1.5 text-[11px] font-medium text-bg-base hover:opacity-90 disabled:opacity-40"
+            className="mt-0.5 rounded bg-accent px-2 py-1.5 text-[11px] font-medium text-bg-base hover:opacity-90 disabled:opacity-40"
             onClick={handleAdd}
             disabled={!newTitle.trim()}
           >
@@ -285,6 +304,7 @@ function TodoItem({
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDesc, setEditDesc] = useState(todo.description);
   const [editUrl, setEditUrl] = useState(todo.url);
+  const [editingUrl, setEditingUrl] = useState(false);
   const [editPriority, setEditPriority] = useState(todo.priority);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -400,15 +420,53 @@ function TodoItem({
           />
 
           {/* URL */}
-          <input
-            className="mb-2 w-full rounded border border-border bg-bg-input px-2.5 py-1.5 text-[13px] text-text-primary outline-none placeholder:text-text-dim focus:border-accent"
-            value={editUrl}
-            onChange={(e) => {
-              setEditUrl(e.target.value);
-              autoSave(editTitle, editDesc, e.target.value, editPriority);
-            }}
-            placeholder="Add link (https://...)"
-          />
+          {editingUrl ? (
+            <div className="mb-2 flex items-center gap-1.5">
+              <input
+                className="flex-1 rounded border border-accent bg-bg-input px-2.5 py-1.5 text-[13px] text-text-primary outline-none"
+                value={editUrl}
+                onChange={(e) => {
+                  setEditUrl(e.target.value);
+                  autoSave(editTitle, editDesc, e.target.value, editPriority);
+                }}
+                onBlur={() => setEditingUrl(false)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") setEditingUrl(false); }}
+                placeholder="https://..."
+                autoFocus
+              />
+            </div>
+          ) : editUrl ? (
+            <div className="mb-2 flex items-center gap-2 rounded border border-border bg-bg-input px-2.5 py-1.5">
+              <a
+                href={editUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 truncate text-[12px] text-accent hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {editUrl}
+              </a>
+              <button
+                className="rounded px-1.5 py-0.5 text-[10px] text-text-muted hover:text-text-primary"
+                onClick={() => navigator.clipboard.writeText(editUrl)}
+              >
+                Copy
+              </button>
+              <button
+                className="rounded px-1.5 py-0.5 text-[10px] text-text-muted hover:text-accent"
+                onClick={() => setEditingUrl(true)}
+              >
+                Edit
+              </button>
+            </div>
+          ) : (
+            <button
+              className="mb-2 w-full rounded border border-dashed border-border px-2.5 py-1.5 text-left text-[12px] text-text-dim hover:border-accent hover:text-accent"
+              onClick={() => setEditingUrl(true)}
+            >
+              + Add link
+            </button>
+          )}
 
           {/* Priority */}
           <div className="flex gap-1">

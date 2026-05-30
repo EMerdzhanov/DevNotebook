@@ -443,6 +443,26 @@ pub fn delete_secret(state: State<'_, AppState>, id: String) -> Result<(), Strin
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
 
+    // Move to trash
+    let (name, category_id, masked_preview, notes, url): (String, String, String, String, String) = conn
+        .query_row(
+            "SELECT name, category_id, masked_preview, notes, url FROM secrets WHERE id = ?1",
+            params![id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+        )
+        .map_err(|e| e.to_string())?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let data = serde_json::json!({
+        "id": id, "category_id": category_id, "name": name,
+        "masked_preview": masked_preview, "notes": notes, "url": url
+    }).to_string();
+
+    conn.execute(
+        "INSERT INTO trash (id, item_type, item_name, item_data, deleted_at) VALUES (?1, 'secret', ?2, ?3, ?4)",
+        params![uuid::Uuid::new_v4().to_string(), name, data, now],
+    ).map_err(|e| e.to_string())?;
+
     conn.execute("DELETE FROM secrets WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
 
@@ -684,6 +704,25 @@ pub fn delete_note(state: State<'_, AppState>, id: String) -> Result<(), String>
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
 
+    // Move to trash
+    let (title, folder_id, project_id): (String, String, String) = conn
+        .query_row(
+            "SELECT title, folder_id, project_id FROM notes WHERE id = ?1",
+            params![id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .map_err(|e| e.to_string())?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let data = serde_json::json!({
+        "id": id, "folder_id": folder_id, "project_id": project_id, "title": title
+    }).to_string();
+
+    conn.execute(
+        "INSERT INTO trash (id, item_type, item_name, item_data, project_id, deleted_at) VALUES (?1, 'note', ?2, ?3, ?4, ?5)",
+        params![uuid::Uuid::new_v4().to_string(), title, data, project_id, now],
+    ).map_err(|e| e.to_string())?;
+
     conn.execute("DELETE FROM notes WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
 
@@ -765,6 +804,118 @@ pub fn toggle_favorite(
         ).map_err(|e| e.to_string())?;
         Ok(true)
     }
+}
+
+// ── Trash Commands ──
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct TrashItem {
+    pub id: String,
+    pub item_type: String,
+    pub item_name: String,
+    pub item_data: String,
+    pub project_id: String,
+    pub deleted_at: String,
+}
+
+#[tauri::command]
+pub fn get_trash(state: State<'_, AppState>) -> Result<Vec<TrashItem>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, item_type, item_name, item_data, project_id, deleted_at FROM trash ORDER BY deleted_at DESC")
+        .map_err(|e| e.to_string())?;
+
+    let items = stmt
+        .query_map([], |row| {
+            Ok(TrashItem {
+                id: row.get(0)?,
+                item_type: row.get(1)?,
+                item_name: row.get(2)?,
+                item_data: row.get(3)?,
+                project_id: row.get(4)?,
+                deleted_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(items)
+}
+
+#[tauri::command]
+pub fn restore_from_trash(state: State<'_, AppState>, id: String) -> Result<String, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let (item_type, item_data): (String, String) = conn
+        .query_row("SELECT item_type, item_data FROM trash WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|e| e.to_string())?;
+
+    let data: serde_json::Value = serde_json::from_str(&item_data)
+        .map_err(|e| format!("Failed to parse trash data: {}", e))?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+
+    match item_type.as_str() {
+        "secret" => {
+            let orig_id = data["id"].as_str().unwrap_or("");
+            let category_id = data["category_id"].as_str().unwrap_or("");
+            let name = data["name"].as_str().unwrap_or("");
+            let masked = data["masked_preview"].as_str().unwrap_or("");
+            let notes = data["notes"].as_str().unwrap_or("");
+            let url = data["url"].as_str().unwrap_or("");
+
+            // Re-insert with a new encrypted_value placeholder (original was deleted)
+            let new_id = uuid::Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO secrets (id, category_id, name, encrypted_value, masked_preview, notes, url, created_at, updated_at) VALUES (?1, ?2, ?3, X'', ?4, ?5, ?6, ?7, ?8)",
+                params![new_id, category_id, name, masked, notes, url, now, now],
+            ).map_err(|e| format!("Failed to restore secret: {}", e))?;
+        }
+        "note" => {
+            let folder_id = data["folder_id"].as_str().unwrap_or("");
+            let project_id = data["project_id"].as_str().unwrap_or("");
+            let title = data["title"].as_str().unwrap_or("");
+
+            let new_id = uuid::Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO notes (id, folder_id, project_id, title, content, category, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, '{}', '', 0, ?5, ?6)",
+                params![new_id, folder_id, project_id, title, now, now],
+            ).map_err(|e| format!("Failed to restore note: {}", e))?;
+        }
+        _ => {}
+    }
+
+    // Remove from trash
+    conn.execute("DELETE FROM trash WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(item_type)
+}
+
+#[tauri::command]
+pub fn permanently_delete_from_trash(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    conn.execute("DELETE FROM trash WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn empty_trash(state: State<'_, AppState>) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    conn.execute("DELETE FROM trash", [])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 // ── Todo Commands ──

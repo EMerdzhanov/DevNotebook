@@ -56,8 +56,6 @@ interface SidebarProps {
   onDeleteNoteFolder: (id: string) => void;
   onDeleteFileFolder: (id: string) => void;
   onToggleFavorite: (itemId: string, itemType: string, itemName: string) => void;
-  onOpenSettings: () => void;
-  isSettingsActive: boolean;
 }
 
 export default function Sidebar({
@@ -83,8 +81,6 @@ export default function Sidebar({
   onDeleteNoteFolder,
   onDeleteFileFolder,
   onToggleFavorite,
-  onOpenSettings,
-  isSettingsActive,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(200);
@@ -434,18 +430,6 @@ export default function Sidebar({
           />
         )}
       </div>
-
-      {/* Settings button */}
-      <button
-        className={`flex w-full items-center gap-2 border-t border-border-subtle px-4 py-3 text-left text-[13px] transition-colors ${
-          isSettingsActive
-            ? "bg-bg-card text-accent"
-            : "text-text-muted hover:text-text-primary"
-        }`}
-        onClick={onOpenSettings}
-      >
-        Settings
-      </button>
 
       {/* Context menu */}
       {ctxMenu && (

@@ -181,6 +181,15 @@ impl Database {
                 updated_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS trash (
+                id TEXT PRIMARY KEY,
+                item_type TEXT NOT NULL,
+                item_name TEXT NOT NULL,
+                item_data TEXT NOT NULL,
+                project_id TEXT DEFAULT '',
+                deleted_at TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS tags (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE

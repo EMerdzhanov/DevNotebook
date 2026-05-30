@@ -19,6 +19,7 @@ import NoteListView from "./components/NoteListView";
 import LockScreen from "./components/LockScreen";
 import SettingsView from "./components/SettingsView";
 import FileListView from "./components/FileListView";
+import TrashView from "./components/TrashView";
 import TodoPanel from "./components/TodoPanel";
 import LibraryPanel from "./components/LibraryPanel";
 import CommandPalette from "./components/CommandPalette";
@@ -460,6 +461,10 @@ export default function App() {
         onCreateProject={handleCreateProject}
         onCloseProject={handleCloseProject}
         onRenameProject={handleRenameProject}
+        onOpenSettings={handleOpenSettings}
+        isSettingsActive={viewState?.view === "settings"}
+        onOpenTrash={() => setViewState({ view: "trash" })}
+        isTrashActive={viewState?.view === "trash"}
       />
 
       {/* Main Content */}
@@ -488,8 +493,6 @@ export default function App() {
           onDeleteNoteFolder={handleDeleteNoteFolder}
           onDeleteFileFolder={handleDeleteFileFolder}
           onToggleFavorite={handleToggleFavorite}
-          onOpenSettings={handleOpenSettings}
-          isSettingsActive={viewState?.view === "settings"}
         />
 
         {/* Content Area */}
@@ -550,6 +553,13 @@ export default function App() {
             onUnpairDevice={bluetooth.unpairDevice}
             onUpdateSensitivity={bluetooth.updateSensitivity}
             onLockVault={handleLockVault}
+          />
+        )}
+        {viewState?.view === "trash" && (
+          <TrashView
+            onRestored={() => {
+              if (activeProjectId) loadProjectData(activeProjectId);
+            }}
           />
         )}
         {!viewState && (

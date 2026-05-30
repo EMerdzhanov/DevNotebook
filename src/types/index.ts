@@ -113,6 +113,15 @@ export interface LibraryEntry {
   updated_at: string;
 }
 
+export interface TrashItem {
+  id: string;
+  item_type: string;
+  item_name: string;
+  item_data: string;
+  project_id: string;
+  deleted_at: string;
+}
+
 export type SidebarItem =
   | { type: "category"; data: SecretCategory }
   | { type: "note"; data: Note };
@@ -122,7 +131,8 @@ export type ViewState =
   | { view: "notes"; noteFolderId: string }
   | { view: "note"; noteId: string }
   | { view: "files"; folderId: string }
-  | { view: "settings" };
+  | { view: "settings" }
+  | { view: "trash" };
 
 export type AppScreen = "loading" | "setup" | "login" | "main";
 

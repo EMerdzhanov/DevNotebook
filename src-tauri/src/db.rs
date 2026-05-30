@@ -97,8 +97,17 @@ impl Database {
                 FOREIGN KEY (category_id) REFERENCES secret_categories(id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS note_folders (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            );
+
             CREATE TABLE IF NOT EXISTS notes (
                 id TEXT PRIMARY KEY,
+                folder_id TEXT NOT NULL DEFAULT '',
                 project_id TEXT NOT NULL,
                 title TEXT NOT NULL,
                 content TEXT NOT NULL DEFAULT '{}',
@@ -162,7 +171,18 @@ impl Database {
             );
             ",
         )
-        .map_err(|e| format!("Migration failed: {}", e))
+        .map_err(|e| format!("Migration failed: {}", e))?;
+
+        // Add folder_id to notes if it doesn't exist (migration for existing DBs)
+        let _ = conn.execute_batch(
+            "ALTER TABLE notes ADD COLUMN folder_id TEXT NOT NULL DEFAULT '';"
+        );
+        // Add url to secrets if it doesn't exist (migration for existing DBs)
+        let _ = conn.execute_batch(
+            "ALTER TABLE secrets ADD COLUMN url TEXT DEFAULT '';"
+        );
+
+        Ok(())
     }
 
     fn seed_defaults(&self, conn: &Connection) -> Result<(), String> {
@@ -173,15 +193,6 @@ impl Database {
             "INSERT INTO projects (id, name, icon, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![project_id, "My Project", "", 0, now, now],
         ).map_err(|e| format!("Failed to seed project: {}", e))?;
-
-        // Seed default note categories by creating one note per category
-        for (i, category) in ["Architecture", "Improvements", "Ideas"].iter().enumerate() {
-            let note_id = uuid::Uuid::new_v4().to_string();
-            conn.execute(
-                "INSERT INTO notes (id, project_id, title, content, category, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, '{}', ?4, ?5, ?6, ?7)",
-                params![note_id, project_id, format!("{} Notes", category), category, i as i32, now, now],
-            ).map_err(|e| format!("Failed to seed note: {}", e))?;
-        }
 
         // Default settings
         conn.execute(

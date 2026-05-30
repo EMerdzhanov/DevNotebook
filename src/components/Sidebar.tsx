@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import type { SecretCategory, Note, FileFolder, Favorite } from "../types";
+import type { SecretCategory, NoteFolder, FileFolder, Favorite } from "../types";
 
 const SECTION_ICONS: Record<string, string> = {
   "API Keys": "🔑",
@@ -16,6 +16,15 @@ const SECTION_ICONS: Record<string, string> = {
   "Encryption Keys": "🛡️",
 };
 
+const NOTE_ICONS: Record<string, string> = {
+  "Architecture": "🏗️",
+  "Improvements": "📈",
+  "Ideas": "💡",
+  "Meeting Notes": "📝",
+  "API Docs": "📖",
+  "Decisions": "⚖️",
+};
+
 const FOLDER_ICONS: Record<string, string> = {
   "Screenshots": "📸",
   "Documents": "📄",
@@ -26,24 +35,25 @@ const FOLDER_ICONS: Record<string, string> = {
 
 interface SidebarProps {
   categories: SecretCategory[];
-  notes: Note[];
+  noteFolders: NoteFolder[];
   fileFolders: FileFolder[];
   activeCategoryId: string | null;
-  activeNoteId: string | null;
+  activeNoteFolderId: string | null;
   activeFolderId: string | null;
   availableTemplates: string[];
+  availableNoteFolderTemplates: string[];
   availableFileFolderTemplates: string[];
   onSelectCategory: (id: string) => void;
-  onSelectNote: (id: string) => void;
+  onSelectNoteFolder: (id: string) => void;
   onSelectFileFolder: (id: string) => void;
   onAddSection: (name: string) => void;
+  onAddNoteFolder: (name: string) => void;
   onAddFileFolder: (name: string) => void;
-  onCreateNote: (category: string) => void;
   favorites: Favorite[];
   onQuickCopy: (categoryId: string) => void;
   onSelectFavorite: (fav: Favorite) => void;
   onDeleteCategory: (id: string) => void;
-  onDeleteNote: (id: string) => void;
+  onDeleteNoteFolder: (id: string) => void;
   onDeleteFileFolder: (id: string) => void;
   onToggleFavorite: (itemId: string, itemType: string, itemName: string) => void;
   onOpenSettings: () => void;
@@ -52,24 +62,25 @@ interface SidebarProps {
 
 export default function Sidebar({
   categories,
-  notes,
+  noteFolders,
   fileFolders,
   activeCategoryId,
-  activeNoteId,
+  activeNoteFolderId,
   activeFolderId,
   availableTemplates,
+  availableNoteFolderTemplates,
   availableFileFolderTemplates,
   onSelectCategory,
-  onSelectNote,
+  onSelectNoteFolder,
   onSelectFileFolder,
   onAddSection,
+  onAddNoteFolder,
   onAddFileFolder,
-  onCreateNote,
   favorites,
   onQuickCopy,
   onSelectFavorite,
   onDeleteCategory,
-  onDeleteNote,
+  onDeleteNoteFolder,
   onDeleteFileFolder,
   onToggleFavorite,
   onOpenSettings,
@@ -83,6 +94,7 @@ export default function Sidebar({
     items: { label: string; danger?: boolean; action: () => void }[];
   } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [noteMenuOpen, setNoteMenuOpen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const isResizing = useRef(false);
 
@@ -127,15 +139,6 @@ export default function Sidebar({
       </div>
     );
   }
-
-  const noteCategories = ["Architecture", "Improvements", "Ideas"];
-  const notesByCategory = noteCategories.reduce(
-    (acc, cat) => {
-      acc[cat] = notes.filter((n) => n.category === cat);
-      return acc;
-    },
-    {} as Record<string, Note[]>,
-  );
 
   const handleAddSection = (name: string) => {
     onAddSection(name);
@@ -370,40 +373,54 @@ export default function Sidebar({
         <div className="mt-5 px-4 py-1.5 text-[10px] font-medium uppercase tracking-wider text-accent">
           Notes
         </div>
-        {noteCategories.map((cat) => (
-          <div key={cat}>
-            <div className="px-4 py-1.5 text-[12px] text-text-muted">{cat}</div>
-            {notesByCategory[cat]?.map((note) => (
-              <button
-                key={note.id}
-                className={`flex w-full items-center px-6 py-1.5 text-left text-[12px] transition-colors ${
-                  activeNoteId === note.id
-                    ? "border-l-2 border-accent bg-bg-card text-text-primary"
-                    : "border-l-2 border-transparent text-text-secondary hover:text-text-primary"
-                }`}
-                onClick={() => onSelectNote(note.id)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setCtxMenu({
-                    x: e.clientX, y: e.clientY,
-                    items: [
-                      { label: favorites.some(f => f.item_id === note.id) ? "Unpin" : "Pin", action: () => onToggleFavorite(note.id, "note", note.title) },
-                      { label: "Delete", danger: true, action: () => onDeleteNote(note.id) },
-                    ],
-                  });
-                }}
-              >
-                {note.title}
-              </button>
-            ))}
-            <button
-              className="w-full px-6 py-1 text-left text-[11px] text-text-dim transition-colors hover:text-accent"
-              onClick={() => onCreateNote(cat)}
-            >
-              + Add note
-            </button>
+        {noteFolders.length === 0 && !noteMenuOpen && (
+          <div className="px-4 py-2 text-[12px] text-text-dim">
+            No categories yet
           </div>
+        )}
+        {noteFolders.map((folder) => (
+          <button
+            key={folder.id}
+            className={`flex w-full items-center justify-between px-4 py-2 text-left text-[13px] transition-colors ${
+              activeNoteFolderId === folder.id
+                ? "border-l-2 border-accent bg-bg-card text-text-primary"
+                : "border-l-2 border-transparent text-text-secondary hover:text-text-primary"
+            }`}
+            onClick={() => onSelectNoteFolder(folder.id)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setCtxMenu({
+                x: e.clientX, y: e.clientY,
+                items: [
+                  { label: "Delete", danger: true, action: () => onDeleteNoteFolder(folder.id) },
+                ],
+              });
+            }}
+          >
+            <span>{folder.name}</span>
+            {folder.note_count > 0 && (
+              <span className="rounded bg-bg-input px-1.5 py-0.5 text-[10px] text-text-muted">
+                {folder.note_count}
+              </span>
+            )}
+          </button>
         ))}
+        <button
+          className="w-full border-t border-border-subtle px-4 py-2 text-left text-[13px] text-text-dim transition-colors hover:text-accent"
+          onClick={() => setNoteMenuOpen(true)}
+        >
+          + Add Category
+        </button>
+        {noteMenuOpen && (
+          <NoteFolderMenu
+            suggestions={availableNoteFolderTemplates}
+            onSelect={(name) => {
+              onAddNoteFolder(name);
+              setNoteMenuOpen(false);
+            }}
+            onClose={() => setNoteMenuOpen(false)}
+          />
+        )}
       </div>
 
       {/* Settings button */}
@@ -457,6 +474,85 @@ export default function Sidebar({
 }
 
 // ── File Folder Menu ──
+
+function NoteFolderMenu({
+  suggestions,
+  onSelect,
+  onClose,
+}: {
+  suggestions: string[];
+  onSelect: (name: string) => void;
+  onClose: () => void;
+}) {
+  const [customInput, setCustomInput] = useState(false);
+  const [customName, setCustomName] = useState("");
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="w-[520px] overflow-hidden rounded-lg border border-border bg-bg-base shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <span className="text-[13px] font-medium text-text-primary">Add Note Category</span>
+          <button className="text-[14px] text-text-muted hover:text-text-primary" onClick={onClose}>&times;</button>
+        </div>
+
+        <div className="py-2">
+          {suggestions.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 px-3 py-2">
+              {suggestions.map((name) => (
+                <button
+                  key={name}
+                  className="flex items-center gap-2.5 rounded-lg border border-border bg-bg-card px-3 py-3 text-left transition-colors hover:border-accent/50 hover:bg-bg-input"
+                  onClick={() => onSelect(name)}
+                >
+                  <span className="text-[18px]">{NOTE_ICONS[name] || "📓"}</span>
+                  <span className="text-[12px] text-text-secondary">{name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="border-t border-border-subtle px-3 pt-3 pb-2">
+            {!customInput ? (
+              <button
+                className="flex w-full items-center gap-2.5 rounded-lg border border-dashed border-accent/40 px-3 py-3 text-left transition-colors hover:border-accent hover:bg-accent/5"
+                onClick={() => setCustomInput(true)}
+              >
+                <span className="flex h-[22px] w-[22px] items-center justify-center rounded bg-accent/20 text-[12px] text-accent">+</span>
+                <span className="text-[12px] text-accent">Custom Category</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  className="flex-1 rounded-lg border border-border bg-bg-input px-3 py-2.5 text-[12px] text-text-primary outline-none focus:border-accent"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && customName.trim()) onSelect(customName.trim());
+                    if (e.key === "Escape") onClose();
+                  }}
+                  placeholder="Category name..."
+                  autoFocus
+                />
+                <button
+                  className="rounded-lg bg-accent px-3 py-2.5 text-[11px] font-medium text-bg-base hover:opacity-90"
+                  onClick={() => customName.trim() && onSelect(customName.trim())}
+                >
+                  Add
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function FileFolderMenu({
   suggestions,

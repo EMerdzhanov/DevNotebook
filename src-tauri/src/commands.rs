@@ -454,6 +454,7 @@ pub fn delete_secret(state: State<'_, AppState>, id: String) -> Result<(), Strin
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Note {
     pub id: String,
+    pub folder_id: String,
     pub project_id: String,
     pub title: String,
     pub content: String,
@@ -463,26 +464,154 @@ pub struct Note {
     pub updated_at: String,
 }
 
+// ── Note Folder Commands ──
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct NoteFolder {
+    pub id: String,
+    pub project_id: String,
+    pub name: String,
+    pub sort_order: i32,
+    pub note_count: i32,
+}
+
+pub const NOTE_FOLDER_TEMPLATES: &[&str] = &[
+    "Architecture",
+    "Improvements",
+    "Ideas",
+    "Meeting Notes",
+    "API Docs",
+    "Decisions",
+];
+
+const NOTE_FOLDER_ICONS: &[(&str, &str)] = &[
+    ("Architecture", "🏗️"),
+    ("Improvements", "📈"),
+    ("Ideas", "💡"),
+    ("Meeting Notes", "📝"),
+    ("API Docs", "📖"),
+    ("Decisions", "⚖️"),
+];
+
+pub fn get_note_folder_icon(name: &str) -> &'static str {
+    NOTE_FOLDER_ICONS.iter().find(|(n, _)| *n == name).map(|(_, i)| *i).unwrap_or("📓")
+}
+
 #[tauri::command]
-pub fn get_notes(state: State<'_, AppState>, project_id: String) -> Result<Vec<Note>, String> {
+pub fn get_suggested_note_folders(state: State<'_, AppState>, project_id: String) -> Result<Vec<String>, String> {
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
 
     let mut stmt = conn
-        .prepare("SELECT id, project_id, title, content, category, sort_order, created_at, updated_at FROM notes WHERE project_id = ?1 ORDER BY sort_order")
+        .prepare("SELECT name FROM note_folders WHERE project_id = ?1")
+        .map_err(|e| e.to_string())?;
+    let existing: Vec<String> = stmt
+        .query_map(params![project_id], |row| row.get(0))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    let available: Vec<String> = NOTE_FOLDER_TEMPLATES
+        .iter()
+        .filter(|name| !existing.contains(&name.to_string()))
+        .map(|s| s.to_string())
+        .collect();
+
+    Ok(available)
+}
+
+#[tauri::command]
+pub fn create_note_folder(state: State<'_, AppState>, project_id: String, name: String) -> Result<NoteFolder, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let max_order: i32 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(sort_order), -1) FROM note_folders WHERE project_id = ?1",
+            params![project_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT INTO note_folders (id, project_id, name, sort_order) VALUES (?1, ?2, ?3, ?4)",
+        params![id, project_id, name, max_order + 1],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(NoteFolder {
+        id,
+        project_id,
+        name,
+        sort_order: max_order + 1,
+        note_count: 0,
+    })
+}
+
+#[tauri::command]
+pub fn get_note_folders(state: State<'_, AppState>, project_id: String) -> Result<Vec<NoteFolder>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT nf.id, nf.project_id, nf.name, nf.sort_order, \
+             (SELECT COUNT(*) FROM notes WHERE folder_id = nf.id) as note_count \
+             FROM note_folders nf WHERE nf.project_id = ?1 ORDER BY nf.sort_order"
+        )
+        .map_err(|e| e.to_string())?;
+
+    let folders = stmt
+        .query_map(params![project_id], |row| {
+            Ok(NoteFolder {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                name: row.get(2)?,
+                sort_order: row.get(3)?,
+                note_count: row.get(4)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(folders)
+}
+
+#[tauri::command]
+pub fn delete_note_folder(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    conn.execute("DELETE FROM notes WHERE folder_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM note_folders WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_notes(state: State<'_, AppState>, folder_id: String) -> Result<Vec<Note>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, folder_id, project_id, title, content, category, sort_order, created_at, updated_at FROM notes WHERE folder_id = ?1 ORDER BY sort_order")
         .map_err(|e| e.to_string())?;
 
     let notes = stmt
-        .query_map(params![project_id], |row| {
+        .query_map(params![folder_id], |row| {
             Ok(Note {
                 id: row.get(0)?,
-                project_id: row.get(1)?,
-                title: row.get(2)?,
-                content: row.get(3)?,
-                category: row.get(4)?,
-                sort_order: row.get(5)?,
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
+                folder_id: row.get(1)?,
+                project_id: row.get(2)?,
+                title: row.get(3)?,
+                content: row.get(4)?,
+                category: row.get(5)?,
+                sort_order: row.get(6)?,
+                created_at: row.get(7)?,
+                updated_at: row.get(8)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -495,9 +624,9 @@ pub fn get_notes(state: State<'_, AppState>, project_id: String) -> Result<Vec<N
 #[tauri::command]
 pub fn create_note(
     state: State<'_, AppState>,
+    folder_id: String,
     project_id: String,
     title: String,
-    category: String,
 ) -> Result<Note, String> {
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
@@ -507,23 +636,24 @@ pub fn create_note(
 
     let max_order: i32 = conn
         .query_row(
-            "SELECT COALESCE(MAX(sort_order), -1) FROM notes WHERE project_id = ?1",
-            params![project_id],
+            "SELECT COALESCE(MAX(sort_order), -1) FROM notes WHERE folder_id = ?1",
+            params![folder_id],
             |row| row.get(0),
         )
         .map_err(|e| e.to_string())?;
 
     conn.execute(
-        "INSERT INTO notes (id, project_id, title, content, category, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, '{}', ?4, ?5, ?6, ?7)",
-        params![id, project_id, title, category, max_order + 1, now, now],
+        "INSERT INTO notes (id, folder_id, project_id, title, content, category, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, '{}', '', ?5, ?6, ?7)",
+        params![id, folder_id, project_id, title, max_order + 1, now, now],
     ).map_err(|e| e.to_string())?;
 
     Ok(Note {
         id,
+        folder_id,
         project_id,
         title,
         content: "{}".to_string(),
-        category,
+        category: String::new(),
         sort_order: max_order + 1,
         created_at: now.clone(),
         updated_at: now,
@@ -784,7 +914,7 @@ pub async fn bluetooth_start_pairing(
 #[tauri::command]
 pub async fn bluetooth_check_pairing(
     state: State<'_, AppState>,
-) -> Result<bool, String> {
+) -> Result<Option<crate::bluetooth::PairedDevice>, String> {
     Ok(state.bluetooth.check_pairing_confirmed().await)
 }
 
@@ -793,10 +923,11 @@ pub async fn bluetooth_complete_pairing(
     state: State<'_, AppState>,
     name: String,
     address: String,
+    ip: String,
 ) -> Result<(), String> {
     state
         .bluetooth
-        .complete_pairing(crate::bluetooth::PairedDevice { name, address })
+        .complete_pairing(crate::bluetooth::PairedDevice { name, address, ip })
         .await;
     Ok(())
 }

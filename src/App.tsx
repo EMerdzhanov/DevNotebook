@@ -3,6 +3,7 @@ import type {
   Project,
   SecretCategory,
   Note,
+  NoteFolder,
   FileFolder,
   Favorite,
   AppScreen,
@@ -14,6 +15,7 @@ import Sidebar from "./components/Sidebar";
 import StatusBar from "./components/StatusBar";
 import SecretListView from "./components/SecretListView";
 import NoteEditor from "./components/NoteEditor";
+import NoteListView from "./components/NoteListView";
 import LockScreen from "./components/LockScreen";
 import SettingsView from "./components/SettingsView";
 import FileListView from "./components/FileListView";
@@ -47,7 +49,9 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [categories, setCategories] = useState<SecretCategory[]>([]);
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [noteFolders, setNoteFolders] = useState<NoteFolder[]>([]);
+  const [availableNoteFolderTemplates, setAvailableNoteFolderTemplates] = useState<string[]>([]);
+  const [currentNotes, setCurrentNotes] = useState<Note[]>([]);
 
   const [availableTemplates, setAvailableTemplates] = useState<string[]>([]);
   const [fileFolders, setFileFolders] = useState<FileFolder[]>([]);
@@ -150,20 +154,23 @@ export default function App() {
   // Load project data when active project changes
   const loadProjectData = useCallback(async (projectId: string) => {
     try {
-      const [cats, noteList, templates, folders, folderTemplates, favs] = await Promise.all([
+      const [cats, templates, nFolders, nFolderTemplates, folders, folderTemplates, favs] = await Promise.all([
         api.getSecretCategories(projectId),
-        api.getNotes(projectId),
         api.getBuiltinTemplates(projectId),
+        api.getNoteFolders(projectId),
+        api.getSuggestedNoteFolders(projectId),
         api.getFileFolders(projectId),
         api.getSuggestedFileFolders(projectId),
         api.getFavorites(projectId),
       ]);
       setCategories(cats);
-      setNotes(noteList);
       setAvailableTemplates(templates);
+      setNoteFolders(nFolders);
+      setAvailableNoteFolderTemplates(nFolderTemplates);
       setFileFolders(folders);
       setAvailableFileFolderTemplates(folderTemplates);
       setFavorites(favs);
+      setCurrentNotes([]);
 
       // Select first category by default
       if (cats.length > 0) {
@@ -286,6 +293,16 @@ export default function App() {
     }
   };
 
+  const handleSelectNoteFolder = async (id: string) => {
+    setViewState({ view: "notes", noteFolderId: id });
+    try {
+      const notes = await api.getNotes(id);
+      setCurrentNotes(notes);
+    } catch (err) {
+      console.error("Failed to load notes:", err);
+    }
+  };
+
   const handleSelectNote = (id: string) => {
     setViewState({ view: "note", noteId: id });
   };
@@ -330,18 +347,6 @@ export default function App() {
     }
   };
 
-  const handleDeleteNote = async (id: string) => {
-    try {
-      await api.deleteNote(id);
-      setNotes((prev) => prev.filter((n) => n.id !== id));
-      if (viewState?.view === "note" && viewState.noteId === id) {
-        setViewState(null);
-      }
-    } catch (err) {
-      console.error("Failed to delete note:", err);
-    }
-  };
-
   const handleDeleteFileFolder = async (id: string) => {
     try {
       await api.deleteFileFolder(id);
@@ -382,14 +387,28 @@ export default function App() {
     }
   };
 
-  const handleCreateNote = async (category: string) => {
+  const handleAddNoteFolder = async (name: string) => {
     if (!activeProjectId) return;
     try {
-      const note = await api.createNote(activeProjectId, "Untitled", category);
-      setNotes((prev) => [...prev, note]);
-      setViewState({ view: "note", noteId: note.id });
+      const folder = await api.createNoteFolder(activeProjectId, name);
+      setNoteFolders((prev) => [...prev, folder]);
+      setAvailableNoteFolderTemplates((prev) => prev.filter((t) => t !== name));
+      setViewState({ view: "notes", noteFolderId: folder.id });
+      setCurrentNotes([]);
     } catch (err) {
-      console.error("Failed to create note:", err);
+      console.error("Failed to add note folder:", err);
+    }
+  };
+
+  const handleDeleteNoteFolder = async (id: string) => {
+    try {
+      await api.deleteNoteFolder(id);
+      setNoteFolders((prev) => prev.filter((f) => f.id !== id));
+      if (viewState?.view === "notes" && viewState.noteFolderId === id) {
+        setViewState(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete note folder:", err);
     }
   };
 
@@ -438,24 +457,25 @@ export default function App() {
         {/* Sidebar */}
         <Sidebar
           categories={categories}
-          notes={notes}
+          noteFolders={noteFolders}
           fileFolders={fileFolders}
           activeCategoryId={activeCategoryId}
-          activeNoteId={activeNoteId}
+          activeNoteFolderId={viewState?.view === "notes" ? viewState.noteFolderId : null}
           activeFolderId={activeFolderId}
           availableTemplates={availableTemplates}
+          availableNoteFolderTemplates={availableNoteFolderTemplates}
           availableFileFolderTemplates={availableFileFolderTemplates}
           onSelectCategory={handleSelectCategory}
-          onSelectNote={handleSelectNote}
+          onSelectNoteFolder={handleSelectNoteFolder}
           onSelectFileFolder={handleSelectFileFolder}
           onAddSection={handleAddSection}
+          onAddNoteFolder={handleAddNoteFolder}
           onAddFileFolder={handleAddFileFolder}
-          onCreateNote={handleCreateNote}
           favorites={favorites}
           onQuickCopy={handleQuickCopy}
           onSelectFavorite={handleSelectFavorite}
           onDeleteCategory={handleDeleteCategory}
-          onDeleteNote={handleDeleteNote}
+          onDeleteNoteFolder={handleDeleteNoteFolder}
           onDeleteFileFolder={handleDeleteFileFolder}
           onToggleFavorite={handleToggleFavorite}
           onOpenSettings={handleOpenSettings}
@@ -469,8 +489,26 @@ export default function App() {
             categoryName={activeCategory.name}
           />
         )}
+        {viewState?.view === "notes" && viewState.noteFolderId && activeProjectId && (() => {
+          const folder = noteFolders.find((f) => f.id === viewState.noteFolderId);
+          return (
+            <NoteListView
+              folderId={viewState.noteFolderId}
+              folderName={folder?.name || "Notes"}
+              projectId={activeProjectId}
+              notes={currentNotes}
+              onSelectNote={handleSelectNote}
+              onNotesChanged={async () => {
+                const updated = await api.getNotes(viewState.noteFolderId);
+                setCurrentNotes(updated);
+                const updatedFolders = await api.getNoteFolders(activeProjectId);
+                setNoteFolders(updatedFolders);
+              }}
+            />
+          );
+        })()}
         {viewState?.view === "note" && activeNoteId && (() => {
-          const note = notes.find((n) => n.id === activeNoteId);
+          const note = currentNotes.find((n) => n.id === activeNoteId);
           return note ? (
             <NoteEditor
               noteId={activeNoteId}
@@ -524,11 +562,11 @@ export default function App() {
         onClose={() => setCommandPaletteOpen(false)}
         projects={projects}
         categories={categories}
-        notes={notes}
+        noteFolders={noteFolders}
         fileFolders={fileFolders}
         onSelectProject={handleSelectProject}
         onSelectCategory={handleSelectCategory}
-        onSelectNote={handleSelectNote}
+        onSelectNoteFolder={handleSelectNoteFolder}
         onSelectFileFolder={handleSelectFileFolder}
         onOpenSettings={handleOpenSettings}
         onLockVault={handleLockVault}

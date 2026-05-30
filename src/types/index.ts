@@ -31,6 +31,7 @@ export interface Secret {
 
 export interface Note {
   id: string;
+  folder_id: string;
   project_id: string;
   title: string;
   content: string;
@@ -38,6 +39,14 @@ export interface Note {
   sort_order: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface NoteFolder {
+  id: string;
+  project_id: string;
+  name: string;
+  sort_order: number;
+  note_count: number;
 }
 
 export interface FileFolder {
@@ -83,6 +92,7 @@ export type SidebarItem =
 
 export type ViewState =
   | { view: "secrets"; categoryId: string }
+  | { view: "notes"; noteFolderId: string }
   | { view: "note"; noteId: string }
   | { view: "files"; folderId: string }
   | { view: "settings" };

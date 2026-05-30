@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import type { Project, SecretCategory, Note, FileFolder } from "../types";
+import type { Project, SecretCategory, NoteFolder, FileFolder } from "../types";
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   projects: Project[];
   categories: SecretCategory[];
-  notes: Note[];
+  noteFolders: NoteFolder[];
   fileFolders: FileFolder[];
   onSelectProject: (id: string) => void;
   onSelectCategory: (id: string) => void;
-  onSelectNote: (id: string) => void;
+  onSelectNoteFolder: (id: string) => void;
   onSelectFileFolder: (id: string) => void;
   onOpenSettings: () => void;
   onLockVault: () => void;
@@ -28,11 +28,11 @@ export default function CommandPalette({
   onClose,
   projects,
   categories,
-  notes,
+  noteFolders,
   fileFolders,
   onSelectProject,
   onSelectCategory,
-  onSelectNote,
+  onSelectNoteFolder,
   onSelectFileFolder,
   onOpenSettings,
   onLockVault,
@@ -66,13 +66,13 @@ export default function CommandPalette({
       });
     });
 
-    // Notes
-    notes.forEach((n) => {
+    // Note Folders
+    noteFolders.forEach((f) => {
       items.push({
-        id: `note-${n.id}`,
-        label: n.title,
+        id: `notefolder-${f.id}`,
+        label: f.name,
         category: "Notes",
-        action: () => onSelectNote(n.id),
+        action: () => onSelectNoteFolder(f.id),
       });
     });
 
@@ -101,7 +101,7 @@ export default function CommandPalette({
     });
 
     return items;
-  }, [projects, categories, notes, fileFolders, onSelectProject, onSelectCategory, onSelectNote, onSelectFileFolder, onOpenSettings, onLockVault]);
+  }, [projects, categories, noteFolders, fileFolders, onSelectProject, onSelectCategory, onSelectNoteFolder, onSelectFileFolder, onOpenSettings, onLockVault]);
 
   // Filter by query
   const filtered = useMemo(() => {

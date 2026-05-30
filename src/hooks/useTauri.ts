@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Project, SecretCategory, Secret, Note, FileFolder, FileRecord, Favorite, Tag } from "../types";
+import type { Project, SecretCategory, Secret, Note, NoteFolder, FileFolder, FileRecord, Favorite, Tag } from "../types";
 
 // Auth
 export const checkVaultExists = () => invoke<boolean>("check_vault_exists");
@@ -52,14 +52,24 @@ export const updateSecret = (
 export const deleteSecret = (id: string) =>
   invoke<void>("delete_secret", { id });
 
+// Note Folders
+export const getSuggestedNoteFolders = (projectId: string) =>
+  invoke<string[]>("get_suggested_note_folders", { projectId });
+export const createNoteFolder = (projectId: string, name: string) =>
+  invoke<NoteFolder>("create_note_folder", { projectId, name });
+export const getNoteFolders = (projectId: string) =>
+  invoke<NoteFolder[]>("get_note_folders", { projectId });
+export const deleteNoteFolder = (id: string) =>
+  invoke<void>("delete_note_folder", { id });
+
 // Notes
-export const getNotes = (projectId: string) =>
-  invoke<Note[]>("get_notes", { projectId });
+export const getNotes = (folderId: string) =>
+  invoke<Note[]>("get_notes", { folderId });
 export const createNote = (
+  folderId: string,
   projectId: string,
   title: string,
-  category: string,
-) => invoke<Note>("create_note", { projectId, title, category });
+) => invoke<Note>("create_note", { folderId, projectId, title });
 export const updateNote = (id: string, title: string, content: string) =>
   invoke<void>("update_note", { id, title, content });
 export const deleteNote = (id: string) => invoke<void>("delete_note", { id });

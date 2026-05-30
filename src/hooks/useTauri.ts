@@ -32,8 +32,6 @@ export const getBuiltinTemplates = (projectId: string) =>
   invoke<string[]>("get_builtin_templates", { projectId });
 export const createSecretCategory = (projectId: string, name: string) =>
   invoke<SecretCategory>("create_secret_category", { projectId, name });
-export const hideSecretCategory = (id: string) =>
-  invoke<void>("hide_secret_category", { id });
 export const deleteSecretCategory = (id: string) =>
   invoke<void>("delete_secret_category", { id });
 
@@ -114,7 +112,6 @@ export const exportFile = (fileId: string, destination: string) =>
   invoke<void>("export_file", { fileId, destination });
 export const shareFile = (fileId: string) =>
   invoke<void>("share_file", { fileId });
-export const cleanupTempFiles = () => invoke<void>("cleanup_temp_files");
 
 // Todos
 export const getTodos = (projectId: string) =>
@@ -172,5 +169,3 @@ export const addTagToItem = (itemId: string, itemType: string, tagName: string) 
   invoke<Tag>("add_tag_to_item", { itemId, itemType, tagName });
 export const removeTagFromItem = (itemId: string, tagId: string) =>
   invoke<void>("remove_tag_from_item", { itemId, tagId });
-export const searchByTag = (tagName: string) =>
-  invoke<[string, string, string][]>("search_by_tag", { tagName });

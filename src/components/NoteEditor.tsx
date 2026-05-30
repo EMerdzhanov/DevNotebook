@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { open as dialogOpen } from "@tauri-apps/plugin-dialog";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -34,6 +34,7 @@ export default function NoteEditor({
   const titleRef = useRef<HTMLInputElement>(null);
   const titleValueRef = useRef(initialTitle);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [, setToolbarTick] = useState(0);
 
   const doSave = useCallback(
     (title: string, content: string) => {
@@ -76,6 +77,13 @@ export default function NoteEditor({
       onUpdate: ({ editor }) => {
         const json = JSON.stringify(editor.getJSON());
         doSave(titleValueRef.current, json);
+        setToolbarTick((t) => t + 1);
+      },
+      onSelectionUpdate: () => {
+        setToolbarTick((t) => t + 1);
+      },
+      onTransaction: () => {
+        setToolbarTick((t) => t + 1);
       },
       editorProps: {
         attributes: {
@@ -222,9 +230,27 @@ function EditorToolbar({ editor, onAttach }: ToolbarProps) {
       {btn("Strike", () => editor.chain().focus().toggleStrike().run(), editor.isActive("strike"))}
       {btn("Code", () => editor.chain().focus().toggleCode().run(), editor.isActive("code"))}
       <span className="mx-1 border-r border-border" />
-      {btn("Bullet", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}
-      {btn("Ordered", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}
-      {btn("Task", () => editor.chain().focus().toggleTaskList().run(), editor.isActive("taskList"))}
+      {btn("Bullet", () => {
+        if (editor.isActive("bulletList")) {
+          editor.chain().focus().liftListItem("listItem").run();
+        } else {
+          editor.chain().focus().toggleBulletList().run();
+        }
+      }, editor.isActive("bulletList"))}
+      {btn("Ordered", () => {
+        if (editor.isActive("orderedList")) {
+          editor.chain().focus().liftListItem("listItem").run();
+        } else {
+          editor.chain().focus().toggleOrderedList().run();
+        }
+      }, editor.isActive("orderedList"))}
+      {btn("Task", () => {
+        if (editor.isActive("taskList")) {
+          editor.chain().focus().liftListItem("taskItem").run();
+        } else {
+          editor.chain().focus().toggleTaskList().run();
+        }
+      }, editor.isActive("taskList"))}
       <span className="mx-1 border-r border-border" />
       {btn("Code Block", () => editor.chain().focus().toggleCodeBlock().run(), editor.isActive("codeBlock"))}
       {btn("Quote", () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}

@@ -106,12 +106,22 @@ body {
 
 .prose-editor ul[data-type="taskList"] li {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5em;
+  min-height: 1.7em;
 }
 
-.prose-editor ul[data-type="taskList"] li label input[type="checkbox"] {
-  margin-top: 0.3em;
+.prose-editor ul[data-type="taskList"] li > label {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.prose-editor ul[data-type="taskList"] li > label input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
   accent-color: var(--color-accent);
 }
 

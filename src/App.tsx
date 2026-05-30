@@ -571,7 +571,7 @@ export default function App() {
               />
             )}
             {!viewState && (
-              <div className="flex flex-1 items-center justify-center text-text-muted">
+              <div className="paper-texture flex flex-1 items-center justify-center text-text-muted">
                 Select a category or note from the sidebar
               </div>
             )}

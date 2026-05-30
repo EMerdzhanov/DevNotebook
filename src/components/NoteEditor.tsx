@@ -157,7 +157,7 @@ export default function NoteEditor({
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="paper-texture flex flex-1 flex-col overflow-hidden">
       {/* Toolbar */}
       {editor && (
         <EditorToolbar

@@ -151,7 +151,7 @@ export default function FileListView({
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="paper-texture flex flex-1 flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <h3 className="text-lg font-medium text-text-primary">{folderName}</h3>

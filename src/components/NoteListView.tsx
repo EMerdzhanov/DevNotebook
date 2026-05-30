@@ -42,7 +42,7 @@ export default function NoteListView({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
+    <div className="paper-texture flex-1 overflow-y-auto p-6">
       <div className="mb-5 flex items-center justify-between">
         <h3 className="text-lg font-medium text-text-primary">{folderName}</h3>
         <button

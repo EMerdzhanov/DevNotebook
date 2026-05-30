@@ -21,6 +21,7 @@ import SettingsView from "./components/SettingsView";
 import FileListView from "./components/FileListView";
 import TrashView from "./components/TrashView";
 import ProjectDashboard from "./components/ProjectDashboard";
+import LibraryView from "./components/LibraryView";
 import TodoPanel from "./components/TodoPanel";
 import LibraryPanel from "./components/LibraryPanel";
 import CommandPalette from "./components/CommandPalette";
@@ -142,7 +143,7 @@ export default function App() {
         setTodoPanelOpen((v) => !v);
       } else if (meta && e.key === "b" && screen === "main") {
         e.preventDefault();
-        setLibraryOpen((v) => !v);
+        setViewState(viewState?.view === "library" ? null : { view: "library" });
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -492,6 +493,8 @@ export default function App() {
         onRenameProject={handleRenameProject}
         onOpenDashboard={() => setViewState(viewState?.view === "dashboard" ? null : { view: "dashboard" })}
         isDashboardActive={viewState?.view === "dashboard"}
+        onOpenLibrary={() => setViewState(viewState?.view === "library" ? null : { view: "library" })}
+        isLibraryActive={viewState?.view === "library"}
         onOpenSettings={handleOpenSettings}
         isSettingsActive={viewState?.view === "settings"}
         onOpenTrash={() => setViewState(viewState?.view === "trash" ? null : { view: "trash" })}
@@ -505,10 +508,14 @@ export default function App() {
             onOpenProject={handleOpenExistingProject}
             onProjectsChanged={reloadOpenProjects}
             onOpenLibraryEntry={() => {
-              setViewState(null);
-              setLibraryOpen(true);
+              setViewState({ view: "library" });
             }}
           />
+        </div>
+      )}
+      {viewState?.view === "library" && (
+        <div className="flex-1 overflow-y-auto">
+          <LibraryView />
         </div>
       )}
       {viewState?.view === "settings" && (
@@ -541,7 +548,7 @@ export default function App() {
       )}
 
       {/* Project view (sidebars + content + todo + library) */}
-      {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && (
+      {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && viewState?.view !== "library" && (
         <>
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar */}

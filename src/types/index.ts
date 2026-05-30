@@ -135,7 +135,8 @@ export type ViewState =
   | { view: "files"; folderId: string }
   | { view: "settings" }
   | { view: "trash" }
-  | { view: "dashboard" };
+  | { view: "dashboard" }
+  | { view: "library" };
 
 export type AppScreen = "loading" | "setup" | "login" | "main";
 

@@ -10,6 +10,8 @@ interface TabBarProps {
   onRenameProject: (id: string, name: string) => void;
   onOpenDashboard: () => void;
   isDashboardActive: boolean;
+  onOpenLibrary: () => void;
+  isLibraryActive: boolean;
   onOpenSettings: () => void;
   isSettingsActive: boolean;
   onOpenTrash: () => void;
@@ -25,6 +27,8 @@ export default function TabBar({
   onRenameProject,
   onOpenDashboard,
   isDashboardActive,
+  onOpenLibrary,
+  isLibraryActive,
   onOpenSettings,
   isSettingsActive,
   onOpenTrash,
@@ -129,6 +133,18 @@ export default function TabBar({
           <rect x="14" y="3" width="7" height="7" />
           <rect x="14" y="14" width="7" height="7" />
           <rect x="3" y="14" width="7" height="7" />
+        </svg>
+      </button>
+      <button
+        className={`flex items-center justify-center px-2 py-1.5 transition-colors ${
+          isLibraryActive ? "text-accent" : "text-text-dim hover:text-text-secondary"
+        }`}
+        onClick={onOpenLibrary}
+        title="Library"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
         </svg>
       </button>
       <button

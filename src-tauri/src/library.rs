@@ -65,6 +65,41 @@ pub fn get_library_entries(
 }
 
 #[tauri::command]
+pub fn get_all_library_entries(
+    state: State<'_, AppState>,
+) -> Result<Vec<LibraryEntry>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, project_id, title, content, entry_type, is_global, sort_order, created_at, updated_at \
+             FROM library_entries ORDER BY sort_order ASC, updated_at DESC"
+        )
+        .map_err(|e| e.to_string())?;
+
+    let entries = stmt
+        .query_map([], |row| {
+            Ok(LibraryEntry {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                title: row.get(2)?,
+                content: row.get(3)?,
+                entry_type: row.get(4)?,
+                is_global: row.get(5)?,
+                sort_order: row.get(6)?,
+                created_at: row.get(7)?,
+                updated_at: row.get(8)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(entries)
+}
+
+#[tauri::command]
 pub fn create_library_entry(
     state: State<'_, AppState>,
     project_id: String,

@@ -110,6 +110,7 @@ pub fn run() {
             commands::bluetooth_set_sensitivity,
             commands::bluetooth_get_sensitivity,
             library::get_library_entries,
+            library::get_all_library_entries,
             library::create_library_entry,
             library::update_library_entry,
             library::delete_library_entry,

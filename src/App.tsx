@@ -500,7 +500,7 @@ export default function App() {
 
       {/* Full-screen views (Settings, Trash, Dashboard) */}
       {viewState?.view === "dashboard" && (
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
           <ProjectDashboard
             onOpenProject={handleOpenExistingProject}
             onProjectsChanged={reloadOpenProjects}
@@ -512,7 +512,7 @@ export default function App() {
         </div>
       )}
       {viewState?.view === "settings" && (
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
           <SettingsView
             bluetoothStatus={bluetooth.status}
             activeThemeId={activeThemeId}
@@ -531,7 +531,7 @@ export default function App() {
         </div>
       )}
       {viewState?.view === "trash" && (
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
           <TrashView
             onRestored={() => {
               if (activeProjectId) loadProjectData(activeProjectId);

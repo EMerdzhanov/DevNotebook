@@ -133,6 +133,8 @@ export const clearCompletedTodos = (projectId: string) =>
 // Library
 export const getLibraryEntries = (projectId: string) =>
   invoke<LibraryEntry[]>("get_library_entries", { projectId });
+export const getAllLibraryEntries = () =>
+  invoke<LibraryEntry[]>("get_all_library_entries");
 export const createLibraryEntry = (projectId: string, title: string, entryType: string, isGlobal: boolean) =>
   invoke<LibraryEntry>("create_library_entry", { projectId, title, entryType, isGlobal });
 export const updateLibraryEntry = (id: string, title: string, content: string) =>

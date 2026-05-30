@@ -26,6 +26,10 @@ export default function ProjectDashboard({
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [libraryEntries, setLibraryEntries] = useState<LibraryEntry[]>([]);
   const [librarySearch, setLibrarySearch] = useState("");
+  const [libraryTypeFilter, setLibraryTypeFilter] = useState<string | null>(null);
+  const [libraryProjectFilter, setLibraryProjectFilter] = useState<string | null>(null);
+  const [typeDropOpen, setTypeDropOpen] = useState(false);
+  const [scopeDropOpen, setScopeDropOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLibConfirm, setDeleteLibConfirm] = useState<string | null>(null);
@@ -46,7 +50,7 @@ export default function ProjectDashboard({
         setLibraryEntries(results);
       } else {
         // Get all global entries (pass empty project_id)
-        const data = await api.getLibraryEntries("");
+        const data = await api.getAllLibraryEntries();
         setLibraryEntries(data);
       }
     } catch (err) {
@@ -239,16 +243,102 @@ export default function ProjectDashboard({
                 onChange={(e) => setLibrarySearch(e.target.value)}
                 placeholder="Search library..."
               />
+              {/* Type filter dropdown */}
+              <div className="relative">
+                <button
+                  className={`flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-[12px] transition-colors ${
+                    libraryTypeFilter ? "border-accent text-accent" : "border-border bg-bg-input text-text-secondary hover:text-text-primary"
+                  }`}
+                  onClick={() => { setTypeDropOpen(!typeDropOpen); setScopeDropOpen(false); }}
+                >
+                  {libraryTypeFilter ? `${TYPE_ICONS[libraryTypeFilter] || "📄"} ${libraryTypeFilter}` : "All Types"}
+                  <span className="text-[9px] text-text-dim">▾</span>
+                </button>
+                {typeDropOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setTypeDropOpen(false)} />
+                    <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded border border-border bg-bg-card py-1 shadow-lg">
+                      <button
+                        className={`flex w-full items-center px-3 py-1.5 text-left text-[12px] hover:bg-bg-input ${!libraryTypeFilter ? "text-accent" : "text-text-primary"}`}
+                        onClick={() => { setLibraryTypeFilter(null); setTypeDropOpen(false); }}
+                      >
+                        All Types
+                      </button>
+                      {[...new Set(libraryEntries.map((e) => e.entry_type))].sort().map((type) => (
+                        <button
+                          key={type}
+                          className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-bg-input ${libraryTypeFilter === type ? "text-accent" : "text-text-primary"}`}
+                          onClick={() => { setLibraryTypeFilter(type); setTypeDropOpen(false); }}
+                        >
+                          <span className="text-[13px]">{TYPE_ICONS[type] || "📄"}</span>
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Scope filter dropdown */}
+              <div className="relative">
+                <button
+                  className={`flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-[12px] transition-colors ${
+                    libraryProjectFilter ? "border-accent text-accent" : "border-border bg-bg-input text-text-secondary hover:text-text-primary"
+                  }`}
+                  onClick={() => { setScopeDropOpen(!scopeDropOpen); setTypeDropOpen(false); }}
+                >
+                  {libraryProjectFilter === "global" ? "Global" : libraryProjectFilter ? allProjects.find((p) => p.id === libraryProjectFilter)?.name || "Project" : "All Scopes"}
+                  <span className="text-[9px] text-text-dim">▾</span>
+                </button>
+                {scopeDropOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setScopeDropOpen(false)} />
+                    <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded border border-border bg-bg-card py-1 shadow-lg">
+                      <button
+                        className={`flex w-full items-center px-3 py-1.5 text-left text-[12px] hover:bg-bg-input ${!libraryProjectFilter ? "text-accent" : "text-text-primary"}`}
+                        onClick={() => { setLibraryProjectFilter(null); setScopeDropOpen(false); }}
+                      >
+                        All Scopes
+                      </button>
+                      <button
+                        className={`flex w-full items-center px-3 py-1.5 text-left text-[12px] hover:bg-bg-input ${libraryProjectFilter === "global" ? "text-accent" : "text-text-primary"}`}
+                        onClick={() => { setLibraryProjectFilter("global"); setScopeDropOpen(false); }}
+                      >
+                        Global
+                      </button>
+                      {allProjects.filter((p) => !p.is_archived).map((p) => (
+                        <button
+                          key={p.id}
+                          className={`flex w-full items-center px-3 py-1.5 text-left text-[12px] hover:bg-bg-input ${libraryProjectFilter === p.id ? "text-accent" : "text-text-primary"}`}
+                          onClick={() => { setLibraryProjectFilter(p.id); setScopeDropOpen(false); }}
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
-          {libraryEntries.length === 0 ? (
+          {(() => {
+            let filtered = libraryEntries;
+            if (libraryTypeFilter) {
+              filtered = filtered.filter((e) => e.entry_type === libraryTypeFilter);
+            }
+            if (libraryProjectFilter === "global") {
+              filtered = filtered.filter((e) => e.is_global);
+            } else if (libraryProjectFilter) {
+              filtered = filtered.filter((e) => e.project_id === libraryProjectFilter);
+            }
+            return filtered.length === 0 ? (
             <div className="py-8 text-center text-[13px] text-text-muted">
-              {librarySearch ? "No matching entries" : "No library entries yet. Open a project and use the Library panel to create one."}
+              {librarySearch || libraryTypeFilter || libraryProjectFilter ? "No matching entries" : "No library entries yet. Open a project and use the Library panel to create one."}
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-4">
-              {libraryEntries.map((entry) => (
+              {filtered.map((entry) => (
                 <div
                   key={entry.id}
                   className="group cursor-pointer rounded-lg border border-border bg-bg-card p-5 transition-colors hover:border-accent/50"
@@ -282,7 +372,8 @@ export default function ProjectDashboard({
                 </div>
               ))}
             </div>
-          )}
+          );
+          })()}
         </div>
       </div>
 

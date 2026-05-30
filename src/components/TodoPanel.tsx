@@ -120,12 +120,13 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
   if (!isOpen) {
     return (
       <button
-        className="flex w-8 flex-col items-center border-l border-border-subtle bg-bg-sidebar py-4"
+        className="flex w-11 flex-col items-center border-l border-border-subtle bg-bg-sidebar py-4"
         onClick={onToggle}
         title="Open To Do list"
       >
+        <span className="text-[12px] text-accent">&lsaquo;</span>
         <span
-          className="text-[10px] font-medium uppercase tracking-widest text-accent"
+          className="mt-3 text-[10px] font-medium uppercase tracking-widest text-accent"
           style={{ writingMode: "vertical-rl" }}
         >
           To Do

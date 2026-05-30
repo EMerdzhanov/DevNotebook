@@ -410,6 +410,8 @@ function NewEntryModal({
 }) {
   const [title, setTitle] = useState("");
   const [entryType, setEntryType] = useState("Reference");
+  const [customType, setCustomType] = useState(false);
+  const [customTypeName, setCustomTypeName] = useState("");
   const [isGlobal, setIsGlobal] = useState(true);
 
   const handleCreate = async () => {
@@ -448,21 +450,40 @@ function NewEntryModal({
           />
 
           <label className="mb-1 block text-[12px] text-text-secondary">Type</label>
-          <div className="mb-4 grid grid-cols-3 gap-2">
+          <div className="mb-2 grid grid-cols-3 gap-2">
             {ENTRY_TYPES.map((type) => (
               <button
                 key={type}
                 className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-[12px] transition-colors ${
-                  entryType === type
+                  entryType === type && !customType
                     ? "border-accent bg-accent/10 text-text-primary"
                     : "border-border bg-bg-card text-text-secondary hover:border-accent/50"
                 }`}
-                onClick={() => setEntryType(type)}
+                onClick={() => { setEntryType(type); setCustomType(false); }}
               >
                 <span className="text-[14px]">{TYPE_ICONS[type] || "📄"}</span>
                 {type}
               </button>
             ))}
+          </div>
+          <div className="mb-4">
+            {!customType ? (
+              <button
+                className="flex w-full items-center gap-2 rounded-lg border border-dashed border-accent/40 px-3 py-2.5 text-left text-[12px] transition-colors hover:border-accent hover:bg-accent/5"
+                onClick={() => setCustomType(true)}
+              >
+                <span className="flex h-[20px] w-[20px] items-center justify-center rounded bg-accent/20 text-[11px] text-accent">+</span>
+                <span className="text-accent">Custom Type</span>
+              </button>
+            ) : (
+              <input
+                className="w-full rounded-lg border border-accent bg-bg-input px-3 py-2.5 text-[12px] text-text-primary outline-none"
+                value={customTypeName}
+                onChange={(e) => { setCustomTypeName(e.target.value); setEntryType(e.target.value); }}
+                placeholder="Enter custom type name..."
+                autoFocus
+              />
+            )}
           </div>
 
           <label className="mb-1 block text-[12px] text-text-secondary">Scope</label>

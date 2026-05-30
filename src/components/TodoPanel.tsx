@@ -22,7 +22,7 @@ const PRIORITY_DOTS: Record<string, string> = {
 
 export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProps) {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [panelWidth, setPanelWidth] = useState(350);
+  const [panelWidth, setPanelWidth] = useState(400);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newUrl, setNewUrl] = useState("");

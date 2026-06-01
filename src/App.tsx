@@ -22,6 +22,7 @@ import FileListView from "./components/FileListView";
 import TrashView from "./components/TrashView";
 import ProjectDashboard from "./components/ProjectDashboard";
 import LibraryView from "./components/LibraryView";
+import NewProjectModal from "./components/NewProjectModal";
 import TodoPanel from "./components/TodoPanel";
 import LibraryPanel from "./components/LibraryPanel";
 import CommandPalette from "./components/CommandPalette";
@@ -232,15 +233,18 @@ export default function App() {
     await loadProjectData(id);
   };
 
-  const handleCreateProject = async () => {
-    try {
-      const project = await api.createProject("New Project");
-      setProjects((prev) => [...prev, project]);
-      setActiveProjectId(project.id);
-      await loadProjectData(project.id);
-    } catch (err) {
-      console.error("Failed to create project:", err);
-    }
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+
+  const handleCreateProject = () => {
+    setShowNewProjectModal(true);
+  };
+
+  const handleProjectCreated = async (project: Project) => {
+    setShowNewProjectModal(false);
+    setProjects((prev) => [...prev, project]);
+    setActiveProjectId(project.id);
+    await loadProjectData(project.id);
+    setViewState(null);
   };
 
   const handleCloseProject = async (id: string) => {
@@ -518,6 +522,7 @@ export default function App() {
             onOpenLibraryEntry={() => {
               setViewState({ view: "library" });
             }}
+            onCreateProject={handleCreateProject}
           />
         </div>
       )}
@@ -661,7 +666,7 @@ export default function App() {
       {/* Status Bar */}
       <StatusBar
         bluetoothStatus={bluetooth.status}
-        bluetoothDevice=""
+        bluetoothDevice={bluetooth.pairedDevice?.name || ""}
         lockCountdown={bluetooth.countdown}
       />
 
@@ -692,6 +697,14 @@ export default function App() {
         action={undoAction}
         onDismiss={() => setUndoAction(null)}
       />
+
+      {/* New Project Modal */}
+      {showNewProjectModal && (
+        <NewProjectModal
+          onCreated={handleProjectCreated}
+          onClose={() => setShowNewProjectModal(false)}
+        />
+      )}
 
       {/* Drag-and-drop overlay */}
       {isDragging && (

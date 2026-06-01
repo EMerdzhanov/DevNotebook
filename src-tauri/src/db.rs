@@ -66,8 +66,21 @@ impl Database {
             CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
+                description TEXT DEFAULT '',
                 icon TEXT DEFAULT '',
                 directory_path TEXT DEFAULT '',
+                platform TEXT DEFAULT '',
+                environment TEXT DEFAULT '',
+                repo_url TEXT DEFAULT '',
+                prod_url TEXT DEFAULT '',
+                dashboard_url TEXT DEFAULT '',
+                docs_url TEXT DEFAULT '',
+                ai_provider TEXT DEFAULT '',
+                ai_model TEXT DEFAULT '',
+                agent_framework TEXT DEFAULT '',
+                frontend_stack TEXT DEFAULT '',
+                backend_stack TEXT DEFAULT '',
+                database_stack TEXT DEFAULT '',
                 is_open INTEGER NOT NULL DEFAULT 1,
                 is_archived INTEGER NOT NULL DEFAULT 0,
                 sort_order INTEGER NOT NULL DEFAULT 0,
@@ -234,6 +247,10 @@ impl Database {
         let _ = conn.execute_batch(
             "ALTER TABLE projects ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0;"
         );
+        // Add project metadata columns
+        for col in &["description", "platform", "environment", "repo_url", "prod_url", "dashboard_url", "docs_url", "ai_provider", "ai_model", "agent_framework", "frontend_stack", "backend_stack", "database_stack"] {
+            let _ = conn.execute_batch(&format!("ALTER TABLE projects ADD COLUMN {} TEXT DEFAULT '';", col));
+        }
 
         Ok(())
     }

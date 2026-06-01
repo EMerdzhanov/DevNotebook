@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Project, SecretCategory, Secret, Note, NoteFolder, FileFolder, FileRecord, Favorite, Tag, Todo, LibraryEntry, TrashItem } from "../types";
+import type { Project, CreateProjectInput, SecretCategory, Secret, Note, NoteFolder, FileFolder, FileRecord, Favorite, Tag, Todo, LibraryEntry, TrashItem } from "../types";
 
 // Auth
 export const checkVaultExists = () => invoke<boolean>("check_vault_exists");
@@ -12,8 +12,8 @@ export const lockVault = () => invoke<void>("lock_vault");
 // Projects
 export const getProjects = () => invoke<Project[]>("get_projects");
 export const getAllProjects = () => invoke<Project[]>("get_all_projects");
-export const createProject = (name: string) =>
-  invoke<Project>("create_project", { name });
+export const createProject = (input: CreateProjectInput) =>
+  invoke<Project>("create_project", { input });
 export const renameProject = (id: string, name: string) =>
   invoke<void>("rename_project", { id, name });
 export const closeProject = (id: string) =>

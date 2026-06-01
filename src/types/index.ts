@@ -1,13 +1,43 @@
 export interface Project {
   id: string;
   name: string;
+  description: string;
   icon: string;
   directory_path: string;
+  platform: string;
+  environment: string;
+  repo_url: string;
+  prod_url: string;
+  dashboard_url: string;
+  docs_url: string;
+  ai_provider: string;
+  ai_model: string;
+  agent_framework: string;
+  frontend_stack: string;
+  backend_stack: string;
+  database_stack: string;
   is_open: boolean;
   is_archived: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface CreateProjectInput {
+  name: string;
+  description?: string;
+  platform?: string;
+  environment?: string;
+  repo_url?: string;
+  prod_url?: string;
+  dashboard_url?: string;
+  docs_url?: string;
+  ai_provider?: string;
+  ai_model?: string;
+  agent_framework?: string;
+  frontend_stack?: string;
+  backend_stack?: string;
+  database_stack?: string;
 }
 
 export interface SecretCategory {

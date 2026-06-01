@@ -13,12 +13,14 @@ interface ProjectDashboardProps {
   onOpenProject: (id: string) => void;
   onProjectsChanged: () => void;
   onOpenLibraryEntry: (entry: LibraryEntry) => void;
+  onCreateProject: () => void;
 }
 
 export default function ProjectDashboard({
   onOpenProject,
   onProjectsChanged,
   onOpenLibraryEntry,
+  onCreateProject,
 }: ProjectDashboardProps) {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [libraryEntries, setLibraryEntries] = useState<LibraryEntry[]>([]);
@@ -99,14 +101,8 @@ export default function ProjectDashboard({
     }
   };
 
-  const handleCreate = async () => {
-    try {
-      const project = await api.createProject("New Project");
-      onOpenProject(project.id);
-      onProjectsChanged();
-    } catch (err) {
-      console.error("Failed to create project:", err);
-    }
+  const handleCreate = () => {
+    onCreateProject();
   };
 
   const activeProjects = allProjects.filter((p) => !p.is_archived);

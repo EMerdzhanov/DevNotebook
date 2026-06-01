@@ -74,8 +74,21 @@ pub fn lock_vault(state: State<'_, AppState>) -> Result<(), String> {
 pub struct Project {
     pub id: String,
     pub name: String,
+    pub description: String,
     pub icon: String,
     pub directory_path: String,
+    pub platform: String,
+    pub environment: String,
+    pub repo_url: String,
+    pub prod_url: String,
+    pub dashboard_url: String,
+    pub docs_url: String,
+    pub ai_provider: String,
+    pub ai_model: String,
+    pub agent_framework: String,
+    pub frontend_stack: String,
+    pub backend_stack: String,
+    pub database_stack: String,
     pub is_open: bool,
     pub is_archived: bool,
     pub sort_order: i32,
@@ -85,7 +98,12 @@ pub struct Project {
 
 fn query_projects(conn: &rusqlite::Connection, where_clause: &str) -> Result<Vec<Project>, String> {
     let sql = format!(
-        "SELECT id, name, icon, directory_path, is_open, is_archived, sort_order, created_at, updated_at FROM projects {} ORDER BY sort_order",
+        "SELECT id, name, description, icon, directory_path, platform, environment, \
+         repo_url, prod_url, dashboard_url, docs_url, \
+         ai_provider, ai_model, agent_framework, \
+         frontend_stack, backend_stack, database_stack, \
+         is_open, is_archived, sort_order, created_at, updated_at \
+         FROM projects {} ORDER BY sort_order",
         where_clause
     );
     let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
@@ -94,13 +112,26 @@ fn query_projects(conn: &rusqlite::Connection, where_clause: &str) -> Result<Vec
             Ok(Project {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                icon: row.get(2)?,
-                directory_path: row.get(3)?,
-                is_open: row.get(4)?,
-                is_archived: row.get(5)?,
-                sort_order: row.get(6)?,
-                created_at: row.get(7)?,
-                updated_at: row.get(8)?,
+                description: row.get(2)?,
+                icon: row.get(3)?,
+                directory_path: row.get(4)?,
+                platform: row.get(5)?,
+                environment: row.get(6)?,
+                repo_url: row.get(7)?,
+                prod_url: row.get(8)?,
+                dashboard_url: row.get(9)?,
+                docs_url: row.get(10)?,
+                ai_provider: row.get(11)?,
+                ai_model: row.get(12)?,
+                agent_framework: row.get(13)?,
+                frontend_stack: row.get(14)?,
+                backend_stack: row.get(15)?,
+                database_stack: row.get(16)?,
+                is_open: row.get(17)?,
+                is_archived: row.get(18)?,
+                sort_order: row.get(19)?,
+                created_at: row.get(20)?,
+                updated_at: row.get(21)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -123,29 +154,60 @@ pub fn get_all_projects(state: State<'_, AppState>) -> Result<Vec<Project>, Stri
     query_projects(conn, "WHERE is_archived = 0")
 }
 
+#[derive(Deserialize)]
+pub struct CreateProjectInput {
+    pub name: String,
+    #[serde(default)] pub description: String,
+    #[serde(default)] pub platform: String,
+    #[serde(default)] pub environment: String,
+    #[serde(default)] pub repo_url: String,
+    #[serde(default)] pub prod_url: String,
+    #[serde(default)] pub dashboard_url: String,
+    #[serde(default)] pub docs_url: String,
+    #[serde(default)] pub ai_provider: String,
+    #[serde(default)] pub ai_model: String,
+    #[serde(default)] pub agent_framework: String,
+    #[serde(default)] pub frontend_stack: String,
+    #[serde(default)] pub backend_stack: String,
+    #[serde(default)] pub database_stack: String,
+}
+
 #[tauri::command]
-pub fn create_project(state: State<'_, AppState>, name: String) -> Result<Project, String> {
+pub fn create_project(state: State<'_, AppState>, input: CreateProjectInput) -> Result<Project, String> {
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
 
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
-    // Get next sort order
     let max_order: i32 = conn
         .query_row("SELECT COALESCE(MAX(sort_order), -1) FROM projects", [], |row| row.get(0))
         .map_err(|e| e.to_string())?;
 
     conn.execute(
-        "INSERT INTO projects (id, name, icon, sort_order, created_at, updated_at) VALUES (?1, ?2, '', ?3, ?4, ?5)",
-        params![id, name, max_order + 1, now, now],
+        "INSERT INTO projects (id, name, description, platform, environment, repo_url, prod_url, dashboard_url, docs_url, ai_provider, ai_model, agent_framework, frontend_stack, backend_stack, database_stack, sort_order, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
+        params![id, input.name, input.description, input.platform, input.environment, input.repo_url, input.prod_url, input.dashboard_url, input.docs_url, input.ai_provider, input.ai_model, input.agent_framework, input.frontend_stack, input.backend_stack, input.database_stack, max_order + 1, now, now],
     ).map_err(|e| e.to_string())?;
 
     Ok(Project {
         id,
-        name,
+        name: input.name,
+        description: input.description,
         icon: String::new(),
         directory_path: String::new(),
+        platform: input.platform,
+        environment: input.environment,
+        repo_url: input.repo_url,
+        prod_url: input.prod_url,
+        dashboard_url: input.dashboard_url,
+        docs_url: input.docs_url,
+        ai_provider: input.ai_provider,
+        ai_model: input.ai_model,
+        agent_framework: input.agent_framework,
+        frontend_stack: input.frontend_stack,
+        backend_stack: input.backend_stack,
+        database_stack: input.database_stack,
         is_open: true,
         is_archived: false,
         sort_order: max_order + 1,

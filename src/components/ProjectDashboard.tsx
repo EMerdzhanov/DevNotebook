@@ -14,6 +14,7 @@ interface ProjectDashboardProps {
   onProjectsChanged: () => void;
   onOpenLibraryEntry: (entry: LibraryEntry) => void;
   onCreateProject: () => void;
+  onCreateLibraryEntry: () => void;
 }
 
 export default function ProjectDashboard({
@@ -21,6 +22,7 @@ export default function ProjectDashboard({
   onProjectsChanged,
   onOpenLibraryEntry,
   onCreateProject,
+  onCreateLibraryEntry,
 }: ProjectDashboardProps) {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [libraryEntries, setLibraryEntries] = useState<LibraryEntry[]>([]);
@@ -236,6 +238,12 @@ export default function ProjectDashboard({
                 onChange={(e) => setLibrarySearch(e.target.value)}
                 placeholder="Search library..."
               />
+              <button
+                className="rounded border border-accent bg-bg-input px-4 py-1.5 text-[12px] text-accent transition-colors hover:bg-accent hover:text-bg-base"
+                onClick={onCreateLibraryEntry}
+              >
+                + New Entry
+              </button>
               {/* Type filter dropdown */}
               <div className="relative">
                 <button

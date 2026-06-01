@@ -523,6 +523,7 @@ export default function App() {
               setViewState({ view: "library" });
             }}
             onCreateProject={handleCreateProject}
+            onCreateLibraryEntry={() => setViewState({ view: "library" })}
           />
         </div>
       )}

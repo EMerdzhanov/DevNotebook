@@ -13,17 +13,14 @@ import { common, createLowlight } from "lowlight";
 import type { LibraryEntry, Project } from "../types";
 import * as api from "../hooks/useTauri";
 import ConfirmDialog from "./ConfirmDialog";
+import { LIBRARY_ICON_MAP, IconFile } from "./Icons";
 
 const lowlight = createLowlight(common);
 
-const TYPE_ICONS: Record<string, string> = {
-  Credentials: "🔐",
-  Workflow: "⚡",
-  "Setup Guide": "🛠️",
-  "Code Snippet": "💻",
-  Reference: "📚",
-  Checklist: "✅",
-};
+function LibIcon({ type, size = 16 }: { type: string; size?: number }) {
+  const Icon = LIBRARY_ICON_MAP[type] || IconFile;
+  return <Icon size={size} />;
+}
 
 const ENTRY_TYPES = ["Credentials", "Workflow", "Setup Guide", "Code Snippet", "Reference", "Checklist"];
 
@@ -114,7 +111,7 @@ export default function LibraryView() {
               }`}
               onClick={() => setTypeDropOpen(!typeDropOpen)}
             >
-              {typeFilter ? `${TYPE_ICONS[typeFilter] || "📄"} ${typeFilter}` : "All Types"}
+              {typeFilter ? <><LibIcon type={typeFilter} /> {typeFilter}</> : "All Types"}
               <span className="text-[9px] text-text-dim">▾</span>
             </button>
             {typeDropOpen && (
@@ -133,7 +130,7 @@ export default function LibraryView() {
                       className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] hover:bg-bg-input ${typeFilter === type ? "text-accent" : "text-text-primary"}`}
                       onClick={() => { setTypeFilter(type); setTypeDropOpen(false); }}
                     >
-                      <span>{TYPE_ICONS[type] || "📄"}</span> {type}
+                      <LibIcon type={type} /> {type}
                     </button>
                   ))}
                 </div>
@@ -163,7 +160,7 @@ export default function LibraryView() {
                   setDeleteConfirm(entry.id);
                 }}
               >
-                <span className="mt-0.5 text-[14px]">{TYPE_ICONS[entry.entry_type] || "📄"}</span>
+                <span className="mt-0.5 text-[14px]"><LibIcon type={entry.entry_type} /></span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13px] text-text-primary">{entry.title}</div>
                   <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-text-dim">
@@ -190,7 +187,7 @@ export default function LibraryView() {
         ) : (
           <div className="flex flex-1 items-center justify-center text-text-muted">
             <div className="text-center">
-              <div className="text-[40px] mb-3">📚</div>
+              <div className="mb-3 text-accent"><IconFile size={40} /></div>
               <div className="text-[14px]">Select an entry or create a new one</div>
             </div>
           </div>
@@ -338,7 +335,7 @@ function LibraryEntryEditor({
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-8 py-6">
         <div className="mb-1 flex items-center gap-2">
-          <span className="text-[16px]">{TYPE_ICONS[entry.entry_type] || "📄"}</span>
+          <span className="text-[16px]"><LibIcon type={entry.entry_type} /></span>
           <span className="rounded bg-bg-input px-2 py-0.5 text-[10px] text-text-muted">
             {entry.entry_type}
           </span>
@@ -434,7 +431,7 @@ function NewEntryModal({
                 }`}
                 onClick={() => { setEntryType(type); setCustomType(false); }}
               >
-                <span className="text-[14px]">{TYPE_ICONS[type]}</span>
+                <LibIcon type={type} />
                 {type}
               </button>
             ))}

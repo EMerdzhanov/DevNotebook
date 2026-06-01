@@ -1,38 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import type { SecretCategory, NoteFolder, FileFolder, Favorite } from "../types";
 import ConfirmDialog from "./ConfirmDialog";
-
-const SECTION_ICONS: Record<string, string> = {
-  "API Keys": "🔑",
-  "Passwords": "🔒",
-  "Database": "🗄️",
-  "OAuth Tokens": "🎟️",
-  "SSH Keys": "🖥️",
-  "Env Variables": "⚙️",
-  "Certificates": "📜",
-  "Webhooks": "🔗",
-  "License Keys": "📋",
-  "Service Accounts": "👤",
-  "Personal Access Tokens": "🪙",
-  "Encryption Keys": "🛡️",
-};
-
-const NOTE_ICONS: Record<string, string> = {
-  "Architecture": "🏗️",
-  "Improvements": "📈",
-  "Ideas": "💡",
-  "Meeting Notes": "📝",
-  "API Docs": "📖",
-  "Decisions": "⚖️",
-};
-
-const FOLDER_ICONS: Record<string, string> = {
-  "Screenshots": "📸",
-  "Documents": "📄",
-  "Configs": "⚙️",
-  "Design": "🎨",
-  "Keys": "🔐",
-};
+import { SECTION_ICON_MAP, FOLDER_ICON_MAP, NOTE_ICON_MAP, IconFile } from "./Icons";
 
 interface SidebarProps {
   categories: SecretCategory[];
@@ -288,7 +257,7 @@ export default function Sidebar({
                         className="flex items-center gap-2.5 rounded-lg border border-border bg-bg-card px-3 py-3 text-left transition-colors hover:border-accent/50 hover:bg-bg-input"
                         onClick={() => handleAddSection(name)}
                       >
-                        <span className="text-[18px]">{SECTION_ICONS[name] || "📁"}</span>
+                        <span className="text-accent">{SECTION_ICON_MAP[name] ? (() => { const I = SECTION_ICON_MAP[name]; return <I size={18} />; })() : <IconFile size={18} />}</span>
                         <span className="text-[12px] text-text-secondary">{name}</span>
                       </button>
                     ))}
@@ -525,7 +494,7 @@ function NoteFolderMenu({
                   className="flex items-center gap-2.5 rounded-lg border border-border bg-bg-card px-3 py-3 text-left transition-colors hover:border-accent/50 hover:bg-bg-input"
                   onClick={() => onSelect(name)}
                 >
-                  <span className="text-[18px]">{NOTE_ICONS[name] || "📓"}</span>
+                  <span className="text-accent">{NOTE_ICON_MAP[name] ? (() => { const I = NOTE_ICON_MAP[name]; return <I size={18} />; })() : <IconFile size={18} />}</span>
                   <span className="text-[12px] text-text-secondary">{name}</span>
                 </button>
               ))}
@@ -604,7 +573,7 @@ function FileFolderMenu({
                   className="flex items-center gap-2.5 rounded-lg border border-border bg-bg-card px-3 py-3 text-left transition-colors hover:border-accent/50 hover:bg-bg-input"
                   onClick={() => onSelect(name)}
                 >
-                  <span className="text-[18px]">{FOLDER_ICONS[name] || "📁"}</span>
+                  <span className="text-accent">{FOLDER_ICON_MAP[name] ? (() => { const I = FOLDER_ICON_MAP[name]; return <I size={18} />; })() : <IconFile size={18} />}</span>
                   <span className="text-[12px] text-text-secondary">{name}</span>
                 </button>
               ))}

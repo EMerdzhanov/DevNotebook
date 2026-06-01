@@ -2,15 +2,16 @@ import { useState, useEffect, useCallback } from "react";
 import type { TrashItem } from "../types";
 import * as api from "../hooks/useTauri";
 import ConfirmDialog from "./ConfirmDialog";
+import { IconKey, IconDoc, IconFolder, IconFile } from "./Icons";
 
 interface TrashViewProps {
   onRestored: () => void;
 }
 
-const TYPE_ICONS: Record<string, string> = {
-  secret: "🔑",
-  note: "📝",
-  file: "📁",
+const TRASH_ICONS: Record<string, React.FC<{ size?: number }>> = {
+  secret: IconKey,
+  note: IconDoc,
+  file: IconFolder,
 };
 
 export default function TrashView({ onRestored }: TrashViewProps) {
@@ -105,7 +106,7 @@ export default function TrashView({ onRestored }: TrashViewProps) {
               className="group flex items-center justify-between rounded-md border border-border bg-bg-card p-3.5"
             >
               <div className="flex items-center gap-3">
-                <span className="text-[16px]">{TYPE_ICONS[item.item_type] || "📄"}</span>
+                <span className="text-accent">{(() => { const I = TRASH_ICONS[item.item_type] || IconFile; return <I size={16} />; })()}</span>
                 <div>
                   <div className="text-[13px] text-text-primary">{item.item_name}</div>
                   <div className="mt-0.5 flex items-center gap-2 text-[11px] text-text-muted">

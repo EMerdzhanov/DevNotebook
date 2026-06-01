@@ -2,21 +2,18 @@ import { useState, useEffect, useCallback } from "react";
 import type { Project, LibraryEntry } from "../types";
 import * as api from "../hooks/useTauri";
 import ConfirmDialog from "./ConfirmDialog";
+import { LIBRARY_ICON_MAP, IconFile } from "./Icons";
+
+function LibIcon({ type, size = 16 }: { type: string; size?: number }) {
+  const Icon = LIBRARY_ICON_MAP[type] || IconFile;
+  return <Icon size={size} />;
+}
 
 interface ProjectDashboardProps {
   onOpenProject: (id: string) => void;
   onProjectsChanged: () => void;
   onOpenLibraryEntry: (entry: LibraryEntry) => void;
 }
-
-const TYPE_ICONS: Record<string, string> = {
-  Credentials: "🔐",
-  Workflow: "⚡",
-  "Setup Guide": "🛠️",
-  "Code Snippet": "💻",
-  Reference: "📚",
-  Checklist: "✅",
-};
 
 export default function ProjectDashboard({
   onOpenProject,
@@ -251,7 +248,7 @@ export default function ProjectDashboard({
                   }`}
                   onClick={() => { setTypeDropOpen(!typeDropOpen); setScopeDropOpen(false); }}
                 >
-                  {libraryTypeFilter ? `${TYPE_ICONS[libraryTypeFilter] || "📄"} ${libraryTypeFilter}` : "All Types"}
+                  {libraryTypeFilter ? <><LibIcon type={libraryTypeFilter} /> {libraryTypeFilter}</> : "All Types"}
                   <span className="text-[9px] text-text-dim">▾</span>
                 </button>
                 {typeDropOpen && (
@@ -270,7 +267,7 @@ export default function ProjectDashboard({
                           className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-bg-input ${libraryTypeFilter === type ? "text-accent" : "text-text-primary"}`}
                           onClick={() => { setLibraryTypeFilter(type); setTypeDropOpen(false); }}
                         >
-                          <span className="text-[13px]">{TYPE_ICONS[type] || "📄"}</span>
+                          <LibIcon type={type} />
                           {type}
                         </button>
                       ))}
@@ -346,7 +343,7 @@ export default function ProjectDashboard({
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-[16px]">{TYPE_ICONS[entry.entry_type] || "📄"}</span>
+                      <span className="text-[16px]"><LibIcon type={entry.entry_type} /></span>
                       <div>
                         <div className="text-[14px] font-medium text-text-primary">{entry.title}</div>
                         <div className="mt-0.5 flex items-center gap-2 text-[10px] text-text-muted">

@@ -12,23 +12,20 @@ import { TaskItem } from "@tiptap/extension-task-item";
 import { common, createLowlight } from "lowlight";
 import type { LibraryEntry } from "../types";
 import * as api from "../hooks/useTauri";
+import { LIBRARY_ICON_MAP, IconFile } from "./Icons";
 
 const lowlight = createLowlight(common);
+
+function LibIcon({ type, size = 16 }: { type: string; size?: number }) {
+  const Icon = LIBRARY_ICON_MAP[type] || IconFile;
+  return <Icon size={size} />;
+}
 
 interface LibraryPanelProps {
   projectId: string | null;
   isOpen: boolean;
   onToggle: () => void;
 }
-
-const TYPE_ICONS: Record<string, string> = {
-  Credentials: "🔐",
-  Workflow: "⚡",
-  "Setup Guide": "🛠️",
-  "Code Snippet": "💻",
-  Reference: "📚",
-  Checklist: "✅",
-};
 
 const ENTRY_TYPES = ["Credentials", "Workflow", "Setup Guide", "Code Snippet", "Reference", "Checklist"];
 
@@ -229,7 +226,7 @@ function LibraryBrowse({
         >
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-[16px]">{TYPE_ICONS[entry.entry_type] || "📄"}</span>
+              <span className="text-[16px]"><LibIcon type={entry.entry_type} /></span>
               <div>
                 <div className="text-[13px] font-medium text-text-primary">{entry.title}</div>
                 <div className="mt-0.5 flex items-center gap-2 text-[10px] text-text-muted">
@@ -331,7 +328,7 @@ function LibraryEditor({
 
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="mb-1 flex items-center gap-2">
-          <span className="text-[14px]">{TYPE_ICONS[entry.entry_type] || "📄"}</span>
+          <span className="text-[14px]"><LibIcon type={entry.entry_type} /></span>
           <span className="rounded bg-bg-input px-2 py-0.5 text-[10px] text-text-muted">
             {entry.entry_type}
           </span>
@@ -461,7 +458,7 @@ function NewEntryModal({
                 }`}
                 onClick={() => { setEntryType(type); setCustomType(false); }}
               >
-                <span className="text-[14px]">{TYPE_ICONS[type] || "📄"}</span>
+                <span className="text-[14px]"><LibIcon type={type} /></span>
                 {type}
               </button>
             ))}

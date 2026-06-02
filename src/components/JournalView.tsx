@@ -237,22 +237,30 @@ export default function JournalView({ projectId, projectName }: JournalViewProps
 
 // ── Entry Editor ──
 
+function extractTagsFromContent(content: string): string {
+  const found = new Set<string>();
+  for (const tag of TAGS) {
+    if (content.includes(`[${tag}]`)) found.add(tag);
+  }
+  return Array.from(found).join(", ");
+}
+
 function JournalEntryEditor({ entry, onSaved }: { entry: JournalEntry; onSaved: () => void }) {
   const [content, setContent] = useState(entry.content);
-  const [tags, setTags] = useState(entry.tags);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setContent(entry.content);
-    setTags(entry.tags);
-  }, [entry.id, entry.content, entry.tags]);
+  }, [entry.id, entry.content]);
 
   const autoSave = useCallback(
-    (newContent: string, newTags: string) => {
+    (newContent: string) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(async () => {
         try {
-          await api.updateJournalEntry(entry.id, newContent, newTags);
+          const tags = extractTagsFromContent(newContent);
+          await api.updateJournalEntry(entry.id, newContent, tags);
           onSaved();
         } catch (err) {
           console.error("Auto-save failed:", err);
@@ -262,16 +270,33 @@ function JournalEntryEditor({ entry, onSaved }: { entry: JournalEntry; onSaved: 
     [entry.id, onSaved],
   );
 
-  const selectedTags = tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [];
+  const insertTag = (tag: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
 
-  const toggleTag = (tag: string) => {
-    const next = selectedTags.includes(tag)
-      ? selectedTags.filter((t) => t !== tag)
-      : [...selectedTags, tag];
-    const newTags = next.join(", ");
-    setTags(newTags);
-    autoSave(content, newTags);
+    const start = textarea.selectionStart;
+    const before = content.substring(0, start);
+    const after = content.substring(start);
+
+    // Add newline before if not at start and previous char isn't a newline
+    const needsNewline = before.length > 0 && !before.endsWith("\n");
+    const prefix = needsNewline ? "\n" : "";
+    const insert = `${prefix}[${tag}] `;
+
+    const newContent = before + insert + after;
+    setContent(newContent);
+    autoSave(newContent);
+
+    // Move cursor after the inserted tag
+    setTimeout(() => {
+      const pos = start + insert.length;
+      textarea.focus();
+      textarea.setSelectionRange(pos, pos);
+    }, 0);
   };
+
+  // Extract tags used in content for highlighting
+  const usedTags = TAGS.filter((tag) => content.includes(`[${tag}]`));
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -287,38 +312,74 @@ function JournalEntryEditor({ entry, onSaved }: { entry: JournalEntry; onSaved: 
         </div>
       </div>
 
-      {/* Tags */}
-      <div className="flex flex-wrap gap-1.5 border-b border-border px-6 py-2">
+      {/* Tag insert buttons */}
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-6 py-2">
+        <span className="mr-1 text-[10px] text-text-dim">Insert:</span>
         {TAGS.map((tag) => (
           <button
             key={tag}
             className={`rounded-full border px-2.5 py-0.5 text-[10px] capitalize transition-colors ${
-              selectedTags.includes(tag)
+              usedTags.includes(tag)
                 ? `${TAG_COLORS[tag] || "bg-bg-input text-text-primary"} border-transparent`
                 : "border-border text-text-dim hover:text-text-secondary"
             }`}
-            onClick={() => toggleTag(tag)}
+            onClick={() => insertTag(tag)}
           >
             {tag}
           </button>
         ))}
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      {/* Content — synced overlay + textarea */}
+      <div className="relative flex-1 overflow-hidden">
+        <div className="absolute inset-0 overflow-y-auto px-6 py-4" id="journal-scroll">
+          {/* Colored render layer */}
+          <div
+            className="pointer-events-none whitespace-pre-wrap break-words text-[14px] leading-relaxed"
+            aria-hidden
+          >
+            {(content || " ").split("\n").map((line, i) => {
+              const tagMatch = line.match(/^\[([^\]]+)\]/);
+              if (tagMatch && TAGS.includes(tagMatch[1])) {
+                const tag = tagMatch[1];
+                const rest = line.substring(tagMatch[0].length);
+                const colors = TAG_COLORS[tag] || "bg-bg-input text-text-dim";
+                return (
+                  <div key={i}>
+                    <span className={`rounded px-1 py-0.5 text-[13px] font-medium ${colors}`}>[{tag}]</span>
+                    <span className="text-text-primary">{rest}</span>
+                  </div>
+                );
+              }
+              return <div key={i} className="text-text-primary">{line || " "}</div>;
+            })}
+          </div>
+        </div>
+        {/* Invisible textarea on top for input + cursor */}
         <textarea
-          className="h-full w-full resize-none bg-transparent text-[14px] leading-relaxed text-text-primary outline-none placeholder:text-text-dim"
+          ref={textareaRef}
+          className="absolute inset-0 h-full w-full resize-none bg-transparent px-6 py-4 text-[14px] leading-relaxed text-transparent caret-accent outline-none"
           value={content}
           onChange={(e) => {
             setContent(e.target.value);
-            autoSave(e.target.value, tags);
+            autoSave(e.target.value);
           }}
-          placeholder="What did you work on today? Log accomplishments, decisions, blockers, learnings..."
+          onScroll={(e) => {
+            const scrollEl = document.getElementById("journal-scroll");
+            if (scrollEl) scrollEl.scrollTop = (e.target as HTMLTextAreaElement).scrollTop;
+          }}
+          placeholder=""
         />
+        {!content && (
+          <div className="pointer-events-none absolute left-6 top-4 text-[14px] text-text-dim">
+            What did you work on today?
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
 
 // ── Summary View ──
 

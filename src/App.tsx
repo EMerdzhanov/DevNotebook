@@ -68,6 +68,7 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryAutoCreate, setLibraryAutoCreate] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
 
@@ -146,7 +147,7 @@ export default function App() {
         setTodoPanelOpen((v) => !v);
       } else if (meta && e.key === "b" && screen === "main") {
         e.preventDefault();
-        setViewState(viewState?.view === "library" ? null : { view: "library" });
+        { setLibraryAutoCreate(false); setViewState(viewState?.view === "library" ? null : { view: "library" }); };
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -497,7 +498,7 @@ export default function App() {
       onRenameProject={handleRenameProject}
       onOpenDashboard={() => setViewState(viewState?.view === "dashboard" ? null : { view: "dashboard" })}
       isDashboardActive={viewState?.view === "dashboard"}
-      onOpenLibrary={() => setViewState(viewState?.view === "library" ? null : { view: "library" })}
+      onOpenLibrary={() => { setLibraryAutoCreate(false); setViewState(viewState?.view === "library" ? null : { view: "library" }); }}
       isLibraryActive={viewState?.view === "library"}
       onOpenSettings={handleOpenSettings}
       isSettingsActive={viewState?.view === "settings"}
@@ -523,13 +524,13 @@ export default function App() {
               setViewState({ view: "library" });
             }}
             onCreateProject={handleCreateProject}
-            onCreateLibraryEntry={() => setViewState({ view: "library" })}
+            onCreateLibraryEntry={() => { setLibraryAutoCreate(true); setViewState({ view: "library" }); }}
           />
         </div>
       )}
       {viewState?.view === "library" && (
         <div className="flex-1 overflow-y-auto">
-          <LibraryView />
+          <LibraryView autoCreate={libraryAutoCreate} />
         </div>
       )}
       {viewState?.view === "settings" && (

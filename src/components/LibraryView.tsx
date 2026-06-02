@@ -24,14 +24,14 @@ function LibIcon({ type, size = 16 }: { type: string; size?: number }) {
 
 const ENTRY_TYPES = ["Credentials", "Workflow", "Setup Guide", "Code Snippet", "Reference", "Checklist"];
 
-export default function LibraryView() {
+export default function LibraryView({ autoCreate = false }: { autoCreate?: boolean }) {
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeEntry, setActiveEntry] = useState<LibraryEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [typeDropOpen, setTypeDropOpen] = useState(false);
-  const [showNewModal, setShowNewModal] = useState(false);
+  const [showNewModal, setShowNewModal] = useState(autoCreate);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const loadEntries = useCallback(async () => {

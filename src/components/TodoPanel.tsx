@@ -23,13 +23,9 @@ const PRIORITY_DOTS: Record<string, string> = {
 export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProps) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [panelWidth, setPanelWidth] = useState(400);
-  const [newTitle, setNewTitle] = useState("");
-  const [newDesc, setNewDesc] = useState("");
-  const [newUrl, setNewUrl] = useState("");
-  const [newPriority, setNewPriority] = useState("medium");
+  const [showAddModal, setShowAddModal] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const isResizing = useRef(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -73,16 +69,11 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
     loadTodos();
   }, [loadTodos]);
 
-  const handleAdd = async () => {
-    if (!projectId || !newTitle.trim()) return;
+  const handleAdd = async (title: string, description: string, url: string, priority: string) => {
+    if (!projectId || !title.trim()) return;
     try {
-      await api.createTodo(projectId, newTitle.trim(), newDesc.trim(), newUrl.trim(), newPriority, "");
-      setNewTitle("");
-      setNewDesc("");
-      setNewUrl("");
-      setNewPriority("medium");
+      await api.createTodo(projectId, title.trim(), description.trim(), url.trim(), priority, "");
       await loadTodos();
-      inputRef.current?.focus();
     } catch (err) {
       console.error("Failed to create todo:", err);
     }
@@ -170,58 +161,26 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
         </button>
       </div>
 
-      {/* Add todo */}
-      <div className="border-b border-border-subtle px-3 py-2.5">
-        <div className="flex items-start gap-1.5">
-          <div className="flex-1">
-            <input
-              ref={inputRef}
-              className="w-full rounded border border-border bg-bg-input px-2.5 py-1.5 text-[13px] text-text-primary outline-none placeholder:text-text-dim focus:border-accent"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) handleAdd();
-              }}
-              placeholder="Task title..."
-            />
-            <textarea
-              className="mt-1.5 w-full rounded border border-border bg-bg-input px-2.5 py-1.5 text-[12px] text-text-primary outline-none placeholder:text-text-dim focus:border-accent"
-              value={newDesc}
-              onChange={(e) => setNewDesc(e.target.value)}
-              placeholder="Description (optional)"
-              rows={2}
-            />
-            <input
-              className="mt-1.5 w-full rounded border border-border bg-bg-input px-2.5 py-1.5 text-[12px] text-text-primary outline-none placeholder:text-text-dim focus:border-accent"
-              value={newUrl}
-              onChange={(e) => setNewUrl(e.target.value)}
-              placeholder="Link (optional)"
-            />
-          </div>
-          <button
-            className="mt-0.5 rounded bg-accent px-2 py-1.5 text-[11px] font-medium text-bg-base hover:opacity-90 disabled:opacity-40"
-            onClick={handleAdd}
-            disabled={!newTitle.trim()}
-          >
-            +
-          </button>
-        </div>
-        <div className="mt-1.5 flex gap-1">
-          {(["low", "medium", "high"] as const).map((p) => (
-            <button
-              key={p}
-              className={`rounded px-2 py-0.5 text-[10px] capitalize transition-colors ${
-                newPriority === p
-                  ? `${PRIORITY_COLORS[p]} bg-bg-input font-medium`
-                  : "text-text-dim hover:text-text-secondary"
-              }`}
-              onClick={() => setNewPriority(p)}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
+      {/* Add todo button */}
+      <div className="border-b border-border-subtle px-3 py-2">
+        <button
+          className="w-full rounded border border-accent bg-bg-input px-3 py-1.5 text-[12px] text-accent transition-colors hover:bg-accent hover:text-bg-base"
+          onClick={() => setShowAddModal(true)}
+        >
+          + Add Task
+        </button>
       </div>
+
+      {/* Add task modal */}
+      {showAddModal && (
+        <AddTodoModal
+          onAdd={async (title, desc, url, priority) => {
+            await handleAdd(title, desc, url, priority);
+            setShowAddModal(false);
+          }}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
 
       {/* Todo list */}
       <div className="flex-1 overflow-y-auto">
@@ -280,6 +239,96 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
         className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-accent/30 active:bg-accent/50"
         onMouseDown={handleMouseDown}
       />
+    </div>
+  );
+}
+
+// ── Todo Item ──
+
+// ── Add Task Modal ──
+
+function AddTodoModal({
+  onAdd,
+  onClose,
+}: {
+  onAdd: (title: string, desc: string, url: string, priority: string) => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [url, setUrl] = useState("");
+  const [priority, setPriority] = useState("medium");
+
+  const handleSubmit = () => {
+    if (!title.trim()) return;
+    onAdd(title, desc, url, priority);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div className="w-[420px] rounded-lg border border-border bg-bg-base shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <span className="text-[13px] font-medium text-text-primary">New Task</span>
+          <button className="text-[14px] text-text-muted hover:text-text-primary" onClick={onClose}>&times;</button>
+        </div>
+
+        <div className="p-4">
+          <label className="mb-1 block text-[12px] text-text-secondary">Title *</label>
+          <input
+            className="mb-3 w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+            placeholder="What needs to be done?"
+            autoFocus
+          />
+
+          <label className="mb-1 block text-[12px] text-text-secondary">Description</label>
+          <textarea
+            className="mb-3 w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            placeholder="Add details..."
+            rows={3}
+          />
+
+          <label className="mb-1 block text-[12px] text-text-secondary">Link</label>
+          <input
+            className="mb-4 w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://..."
+          />
+
+          <label className="mb-1.5 block text-[12px] text-text-secondary">Priority</label>
+          <div className="mb-4 flex gap-2">
+            {(["low", "medium", "high"] as const).map((p) => (
+              <button
+                key={p}
+                className={`flex-1 rounded border py-1.5 text-[12px] capitalize transition-colors ${
+                  priority === p
+                    ? `border-accent ${PRIORITY_COLORS[p]} bg-accent/10 font-medium`
+                    : "border-border bg-bg-card text-text-secondary hover:border-accent/50"
+                }`}
+                onClick={() => setPriority(p)}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button className="rounded px-4 py-2 text-[13px] text-text-secondary hover:text-text-primary" onClick={onClose}>Cancel</button>
+            <button
+              className="rounded bg-accent px-4 py-2 text-[13px] font-medium text-bg-base hover:opacity-90 disabled:opacity-50"
+              onClick={handleSubmit}
+              disabled={!title.trim()}
+            >
+              Add Task
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

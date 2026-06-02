@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Project, CreateProjectInput, SecretCategory, Secret, Note, NoteFolder, FileFolder, FileRecord, Favorite, Tag, Todo, LibraryEntry, TrashItem } from "../types";
+import type { Project, CreateProjectInput, SecretCategory, Secret, Note, NoteFolder, FileFolder, FileRecord, Favorite, Tag, Todo, LibraryEntry, TrashItem, JournalEntry, TimeSession, ProjectSummary } from "../types";
 
 // Auth
 export const checkVaultExists = () => invoke<boolean>("check_vault_exists");
@@ -146,6 +146,24 @@ export const getTrash = () => invoke<TrashItem[]>("get_trash");
 export const restoreFromTrash = (id: string) => invoke<string>("restore_from_trash", { id });
 export const permanentlyDeleteFromTrash = (id: string) => invoke<void>("permanently_delete_from_trash", { id });
 export const emptyTrash = () => invoke<void>("empty_trash");
+
+// Journal
+export const getJournalEntries = (projectId: string) =>
+  invoke<JournalEntry[]>("get_journal_entries", { projectId });
+export const getOrCreateTodayEntry = (projectId: string) =>
+  invoke<JournalEntry>("get_or_create_today_entry", { projectId });
+export const updateJournalEntry = (id: string, content: string, tags: string) =>
+  invoke<void>("update_journal_entry", { id, content, tags });
+export const deleteJournalEntry = (id: string) =>
+  invoke<void>("delete_journal_entry", { id });
+export const startTimer = (projectId: string, journalEntryId: string) =>
+  invoke<TimeSession>("start_timer", { projectId, journalEntryId });
+export const stopTimer = (projectId: string) =>
+  invoke<TimeSession | null>("stop_timer", { projectId });
+export const getRunningTimer = (projectId: string) =>
+  invoke<TimeSession | null>("get_running_timer", { projectId });
+export const getProjectSummary = (projectId: string) =>
+  invoke<ProjectSummary>("get_project_summary", { projectId });
 
 // Reorder
 export const reorderItems = (table: string, ids: string[]) =>

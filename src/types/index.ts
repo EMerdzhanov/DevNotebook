@@ -154,6 +154,34 @@ export interface TrashItem {
   deleted_at: string;
 }
 
+export interface JournalEntry {
+  id: string;
+  project_id: string;
+  date: string;
+  content: string;
+  tags: string;
+  time_minutes: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TimeSession {
+  id: string;
+  project_id: string;
+  journal_entry_id: string;
+  started_at: string;
+  ended_at: string;
+  duration_minutes: number;
+  is_running: boolean;
+}
+
+export interface ProjectSummary {
+  total_entries: number;
+  total_time_minutes: number;
+  tags_summary: [string, number][];
+  entries: JournalEntry[];
+}
+
 export type SidebarItem =
   | { type: "category"; data: SecretCategory }
   | { type: "note"; data: Note };
@@ -166,7 +194,8 @@ export type ViewState =
   | { view: "settings" }
   | { view: "trash" }
   | { view: "dashboard" }
-  | { view: "library" };
+  | { view: "library" }
+  | { view: "journal" };
 
 export type AppScreen = "loading" | "setup" | "login" | "main";
 

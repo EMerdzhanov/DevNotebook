@@ -22,6 +22,7 @@ import FileListView from "./components/FileListView";
 import TrashView from "./components/TrashView";
 import ProjectDashboard from "./components/ProjectDashboard";
 import LibraryView from "./components/LibraryView";
+import JournalView from "./components/JournalView";
 import NewProjectModal from "./components/NewProjectModal";
 import TodoPanel from "./components/TodoPanel";
 import LibraryPanel from "./components/LibraryPanel";
@@ -500,6 +501,8 @@ export default function App() {
       isDashboardActive={viewState?.view === "dashboard"}
       onOpenLibrary={() => { setLibraryAutoCreate(false); setViewState(viewState?.view === "library" ? null : { view: "library" }); }}
       isLibraryActive={viewState?.view === "library"}
+        onOpenJournal={() => { setViewState(viewState?.view === "journal" ? null : { view: "journal" }); }}
+        isJournalActive={viewState?.view === "journal"}
       onOpenSettings={handleOpenSettings}
       isSettingsActive={viewState?.view === "settings"}
       onOpenTrash={() => setViewState(viewState?.view === "trash" ? null : { view: "trash" })}
@@ -533,6 +536,14 @@ export default function App() {
           <LibraryView autoCreate={libraryAutoCreate} />
         </div>
       )}
+      {viewState?.view === "journal" && activeProjectId && (
+        <div className="flex-1 overflow-y-auto">
+          <JournalView
+            projectId={activeProjectId}
+            projectName={projects.find((p) => p.id === activeProjectId)?.name || "Project"}
+          />
+        </div>
+      )}
       {viewState?.view === "settings" && (
         <div className="flex-1 overflow-y-auto">
           <SettingsView
@@ -563,7 +574,7 @@ export default function App() {
       )}
 
       {/* Project view (sidebars + content + todo + library) */}
-      {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && viewState?.view !== "library" && (
+      {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && viewState?.view !== "library" && viewState?.view !== "journal" && (
         <>
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar — spans full height including tab bar area */}

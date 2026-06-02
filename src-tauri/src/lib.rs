@@ -3,6 +3,7 @@ mod commands;
 mod crypto;
 mod db;
 mod files;
+mod journal;
 mod library;
 mod pairing;
 mod proximity;
@@ -109,6 +110,14 @@ pub fn run() {
             commands::bluetooth_paired_device,
             commands::bluetooth_set_sensitivity,
             commands::bluetooth_get_sensitivity,
+            journal::get_journal_entries,
+            journal::get_or_create_today_entry,
+            journal::update_journal_entry,
+            journal::delete_journal_entry,
+            journal::start_timer,
+            journal::stop_timer,
+            journal::get_running_timer,
+            journal::get_project_summary,
             library::get_library_entries,
             library::get_all_library_entries,
             library::create_library_entry,

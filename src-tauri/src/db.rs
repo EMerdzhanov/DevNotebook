@@ -196,6 +196,29 @@ impl Database {
                 updated_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS journal_entries (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                date TEXT NOT NULL,
+                content TEXT NOT NULL DEFAULT '',
+                tags TEXT DEFAULT '',
+                time_minutes INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS time_sessions (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                journal_entry_id TEXT DEFAULT '',
+                started_at TEXT NOT NULL,
+                ended_at TEXT DEFAULT '',
+                duration_minutes INTEGER NOT NULL DEFAULT 0,
+                is_running INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            );
+
             CREATE TABLE IF NOT EXISTS trash (
                 id TEXT PRIMARY KEY,
                 item_type TEXT NOT NULL,

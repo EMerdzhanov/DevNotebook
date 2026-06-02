@@ -12,6 +12,8 @@ interface TabBarProps {
   isDashboardActive: boolean;
   onOpenLibrary: () => void;
   isLibraryActive: boolean;
+  onOpenJournal: () => void;
+  isJournalActive: boolean;
   onOpenSettings: () => void;
   isSettingsActive: boolean;
   onOpenTrash: () => void;
@@ -30,6 +32,8 @@ export default function TabBar({
   isDashboardActive,
   onOpenLibrary,
   isLibraryActive,
+  onOpenJournal,
+  isJournalActive,
   onOpenSettings,
   isSettingsActive,
   onOpenTrash,
@@ -148,6 +152,18 @@ export default function TabBar({
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      </button>
+      <button
+        className={`flex items-center justify-center px-2 py-1.5 transition-colors ${
+          isJournalActive ? "text-accent" : "text-text-dim hover:text-text-secondary"
+        }`}
+        onClick={onOpenJournal}
+        title="Journal"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
         </svg>
       </button>
       <button

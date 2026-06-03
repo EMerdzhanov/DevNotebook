@@ -65,6 +65,7 @@ pub fn run() {
             commands::open_project,
             commands::archive_project,
             commands::delete_project,
+            commands::permanently_delete_project,
             commands::get_secret_categories,
             commands::get_builtin_templates,
             commands::create_secret_category,

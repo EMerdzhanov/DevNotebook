@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from "react";
 import type { TrashItem } from "../types";
 import * as api from "../hooks/useTauri";
 import ConfirmDialog from "./ConfirmDialog";
-import { IconKey, IconDoc, IconFolder, IconFile } from "./Icons";
+import { IconKey, IconDoc, IconFolder, IconFile, IconBuilding } from "./Icons";
 
 interface TrashViewProps {
   onRestored: () => void;
 }
 
 const TRASH_ICONS: Record<string, React.FC<{ size?: number }>> = {
+  project: IconBuilding,
   secret: IconKey,
   note: IconDoc,
   file: IconFolder,

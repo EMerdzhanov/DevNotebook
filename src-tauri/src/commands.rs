@@ -266,9 +266,34 @@ pub fn archive_project(state: State<'_, AppState>, id: String) -> Result<(), Str
     Ok(())
 }
 
-/// Permanently delete a project and all its data
+/// Soft-delete a project — move to trash, keep all data
 #[tauri::command]
 pub fn delete_project(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let name: String = conn
+        .query_row("SELECT name FROM projects WHERE id = ?1", params![id], |row| row.get(0))
+        .map_err(|e| e.to_string())?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let data = serde_json::json!({ "id": id, "name": name }).to_string();
+
+    conn.execute(
+        "INSERT INTO trash (id, item_type, item_name, item_data, project_id, deleted_at) VALUES (?1, 'project', ?2, ?3, ?4, ?5)",
+        params![uuid::Uuid::new_v4().to_string(), name, data, id, now],
+    ).map_err(|e| e.to_string())?;
+
+    // Hide the project instead of deleting data
+    conn.execute("UPDATE projects SET is_open = 0, is_archived = 1 WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Permanently delete a project and all its data (from trash)
+#[tauri::command]
+pub fn permanently_delete_project(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
 
@@ -285,6 +310,10 @@ pub fn delete_project(state: State<'_, AppState>, id: String) -> Result<(), Stri
     conn.execute("DELETE FROM todos WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM favorites WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM journal_entries WHERE project_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM time_sessions WHERE project_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM projects WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
@@ -1009,6 +1038,14 @@ pub fn restore_from_trash(state: State<'_, AppState>, id: String) -> Result<Stri
                 params![new_id, folder_id, project_id, title, now, now],
             ).map_err(|e| format!("Failed to restore note: {}", e))?;
         }
+        "project" => {
+            let project_id = data["id"].as_str().unwrap_or("");
+            // Un-archive the project — data is still there
+            conn.execute(
+                "UPDATE projects SET is_archived = 0, is_open = 1 WHERE id = ?1",
+                params![project_id],
+            ).map_err(|e| format!("Failed to restore project: {}", e))?;
+        }
         _ => {}
     }
 
@@ -1023,6 +1060,33 @@ pub fn restore_from_trash(state: State<'_, AppState>, id: String) -> Result<Stri
 pub fn permanently_delete_from_trash(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
+
+    // Check if it's a project — if so, permanently delete all its data
+    let item = conn.query_row(
+        "SELECT item_type, item_data FROM trash WHERE id = ?1",
+        params![id],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+    );
+
+    if let Ok((item_type, item_data)) = item {
+        if item_type == "project" {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&item_data) {
+                let project_id = data["id"].as_str().unwrap_or("");
+                if !project_id.is_empty() {
+                    let _ = conn.execute("DELETE FROM secrets WHERE category_id IN (SELECT id FROM secret_categories WHERE project_id = ?1)", params![project_id]);
+                    let _ = conn.execute("DELETE FROM secret_categories WHERE project_id = ?1", params![project_id]);
+                    let _ = conn.execute("DELETE FROM notes WHERE project_id = ?1", params![project_id]);
+                    let _ = conn.execute("DELETE FROM note_folders WHERE project_id = ?1", params![project_id]);
+                    let _ = conn.execute("DELETE FROM file_folders WHERE project_id = ?1", params![project_id]);
+                    let _ = conn.execute("DELETE FROM todos WHERE project_id = ?1", params![project_id]);
+                    let _ = conn.execute("DELETE FROM favorites WHERE project_id = ?1", params![project_id]);
+                    let _ = conn.execute("DELETE FROM journal_entries WHERE project_id = ?1", params![project_id]);
+                    let _ = conn.execute("DELETE FROM time_sessions WHERE project_id = ?1", params![project_id]);
+                    let _ = conn.execute("DELETE FROM projects WHERE id = ?1", params![project_id]);
+                }
+            }
+        }
+    }
 
     conn.execute("DELETE FROM trash WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;

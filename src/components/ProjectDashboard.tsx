@@ -143,16 +143,44 @@ export default function ProjectDashboard({
                 <div className="text-[15px] font-medium text-text-primary">
                   {project.name}
                 </div>
-                {project.is_open && (
-                  <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium text-accent">
-                    Open
-                  </span>
+                <div className="flex gap-1">
+                  {project.environment && (
+                    <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
+                      project.environment === "Production" ? "bg-status-connected/20 text-status-connected" :
+                      project.environment === "Staging" ? "bg-status-warning/20 text-status-warning" :
+                      "bg-bg-input text-text-muted"
+                    }`}>
+                      {project.environment}
+                    </span>
+                  )}
+                  {project.is_open && (
+                    <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium text-accent">
+                      Open
+                    </span>
+                  )}
+                </div>
+              </div>
+              {project.description && (
+                <div className="mt-1.5 text-[12px] text-text-secondary line-clamp-2">
+                  {project.description}
+                </div>
+              )}
+              {/* Metadata chips */}
+              <div className="mt-2 flex flex-wrap gap-1">
+                {project.platform && (
+                  <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.platform}</span>
+                )}
+                {project.ai_provider && (
+                  <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.ai_provider}</span>
+                )}
+                {project.frontend_stack && (
+                  <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.frontend_stack.split(",")[0].trim()}</span>
+                )}
+                {project.backend_stack && (
+                  <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.backend_stack.split(",")[0].trim()}</span>
                 )}
               </div>
-              <div className="mt-2 text-[11px] text-text-dim">
-                Created {new Date(project.created_at).toLocaleDateString()}
-              </div>
-              <div className="mt-1 text-[11px] text-text-dim">
+              <div className="mt-2 text-[10px] text-text-dim">
                 Updated {new Date(project.updated_at).toLocaleDateString()}
               </div>
               <div className="mt-3 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">

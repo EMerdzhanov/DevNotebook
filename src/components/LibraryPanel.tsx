@@ -33,28 +33,29 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [activeEntry, setActiveEntry] = useState<LibraryEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [scopeFilter, setScopeFilter] = useState<"all" | "project" | "global">("project");
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [panelHeight, setPanelHeight] = useState(400);
   const isResizing = useRef(false);
 
   const loadEntries = useCallback(async () => {
-    if (!projectId) return;
     try {
       if (searchQuery.trim()) {
         const results = await api.searchLibrary(searchQuery);
         setEntries(results);
       } else {
-        const data = await api.getLibraryEntries(projectId);
+        const data = await api.getAllLibraryEntries();
         setEntries(data);
       }
     } catch (err) {
       console.error("Failed to load library:", err);
     }
-  }, [projectId, searchQuery]);
+  }, [searchQuery]);
 
   useEffect(() => {
-    if (isOpen) loadEntries();
-  }, [isOpen, loadEntries]);
+    loadEntries();
+  }, [loadEntries]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -165,6 +166,53 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
         </div>
       </div>
 
+      {/* Filters */}
+      {!activeEntry && (
+        <div className="flex items-center gap-2 border-b border-border px-4 py-1.5">
+          {/* Scope filter */}
+          <div className="flex gap-1">
+            {(["project", "global", "all"] as const).map((scope) => (
+              <button
+                key={scope}
+                className={`rounded-full px-2.5 py-0.5 text-[10px] capitalize transition-colors ${
+                  scopeFilter === scope ? "bg-accent text-bg-base" : "bg-bg-input text-text-dim hover:text-text-secondary"
+                }`}
+                onClick={() => setScopeFilter(scope)}
+              >
+                {scope === "project" ? "This Project" : scope}
+              </button>
+            ))}
+          </div>
+          <span className="text-[10px] text-border">|</span>
+          {/* Type filter */}
+          <div className="flex gap-1">
+            <button
+              className={`rounded-full px-2 py-0.5 text-[10px] transition-colors ${
+                !typeFilter ? "bg-accent text-bg-base" : "bg-bg-input text-text-dim hover:text-text-secondary"
+              }`}
+              onClick={() => setTypeFilter(null)}
+            >
+              All
+            </button>
+            {ENTRY_TYPES.map((type) => {
+              const count = entries.filter((e) => e.entry_type === type).length;
+              if (count === 0) return null;
+              return (
+                <button
+                  key={type}
+                  className={`rounded-full px-2 py-0.5 text-[10px] transition-colors ${
+                    typeFilter === type ? "bg-accent text-bg-base" : "bg-bg-input text-text-dim hover:text-text-secondary"
+                  }`}
+                  onClick={() => setTypeFilter(typeFilter === type ? null : type)}
+                >
+                  {type}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {activeEntry ? (
@@ -174,7 +222,11 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
           />
         ) : (
           <LibraryBrowse
-            entries={entries}
+            entries={entries.filter((e) => {
+              if (scopeFilter === "project" && projectId) return e.project_id === projectId || e.is_global;
+              if (scopeFilter === "global") return e.is_global;
+              return true;
+            }).filter((e) => !typeFilter || e.entry_type === typeFilter)}
             onSelect={setActiveEntry}
             onDelete={handleDelete}
           />

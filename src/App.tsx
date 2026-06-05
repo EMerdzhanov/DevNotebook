@@ -391,6 +391,11 @@ export default function App() {
       if (viewState?.view === "secrets" && viewState.categoryId === id) {
         setViewState(null);
       }
+      // Refresh available templates so deleted category reappears
+      if (activeProjectId) {
+        const templates = await api.getBuiltinTemplates(activeProjectId);
+        setAvailableTemplates(templates);
+      }
     } catch (err) {
       console.error("Failed to delete category:", err);
     }
@@ -402,6 +407,10 @@ export default function App() {
       setFileFolders((prev) => prev.filter((f) => f.id !== id));
       if (viewState?.view === "files" && viewState.folderId === id) {
         setViewState(null);
+      }
+      if (activeProjectId) {
+        const templates = await api.getSuggestedFileFolders(activeProjectId);
+        setAvailableFileFolderTemplates(templates);
       }
     } catch (err) {
       console.error("Failed to delete folder:", err);
@@ -455,6 +464,10 @@ export default function App() {
       setNoteFolders((prev) => prev.filter((f) => f.id !== id));
       if (viewState?.view === "notes" && viewState.noteFolderId === id) {
         setViewState(null);
+      }
+      if (activeProjectId) {
+        const templates = await api.getSuggestedNoteFolders(activeProjectId);
+        setAvailableNoteFolderTemplates(templates);
       }
     } catch (err) {
       console.error("Failed to delete note folder:", err);

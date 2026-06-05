@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { Secret } from "../types";
 import * as api from "../hooks/useTauri";
 import ConfirmDialog from "./ConfirmDialog";
+import StructuredSecretModal, { hasStructuredForm } from "./StructuredSecretModal";
 
 interface SecretListViewProps {
   categoryId: string;
@@ -162,7 +163,18 @@ export default function SecretListView({
         </div>
       )}
 
-      {showAddModal && (
+      {showAddModal && hasStructuredForm(categoryName) ? (
+        <StructuredSecretModal
+          categoryId={categoryId}
+          categoryName={categoryName}
+          secret={editingSecret}
+          onClose={() => {
+            setShowAddModal(false);
+            setEditingSecret(null);
+          }}
+          onSaved={loadSecrets}
+        />
+      ) : showAddModal && (
         <SecretEditModal
           categoryId={categoryId}
           secret={editingSecret}

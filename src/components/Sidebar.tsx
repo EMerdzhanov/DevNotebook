@@ -249,8 +249,7 @@ export default function Sidebar({
               </div>
 
               <div className="py-2">
-                {availableTemplates.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2 px-3 py-2">
+                <div className="grid grid-cols-3 gap-2 px-3 py-2">
                     {availableTemplates.map((name) => (
                       <button
                         key={name}
@@ -262,7 +261,6 @@ export default function Sidebar({
                       </button>
                     ))}
                   </div>
-                )}
 
                 {/* Custom option */}
                 <div className="border-t border-border-subtle px-3 pt-3 pb-2">

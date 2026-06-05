@@ -68,6 +68,15 @@ pub fn lock_vault(state: State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
+pub fn move_to_trash(conn: &rusqlite::Connection, item_type: &str, item_name: &str, item_data: &str, project_id: &str) -> Result<(), String> {
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO trash (id, item_type, item_name, item_data, project_id, deleted_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![uuid::Uuid::new_v4().to_string(), item_type, item_name, item_data, project_id, now],
+    ).map_err(|e| format!("Failed to move to trash: {}", e))?;
+    Ok(())
+}
+
 // ── Project Commands ──
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -450,7 +459,6 @@ pub fn delete_secret_category(state: State<'_, AppState>, id: String) -> Result<
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
 
-    // Only allow deleting non-builtin categories
     let is_builtin: bool = conn
         .query_row("SELECT is_builtin FROM secret_categories WHERE id = ?1", params![id], |row| row.get(0))
         .map_err(|e| e.to_string())?;
@@ -458,6 +466,13 @@ pub fn delete_secret_category(state: State<'_, AppState>, id: String) -> Result<
     if is_builtin {
         return Err("Cannot delete builtin categories — use hide instead".to_string());
     }
+
+    let (name, project_id): (String, String) = conn
+        .query_row("SELECT name, project_id FROM secret_categories WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|e| e.to_string())?;
+
+    let data = serde_json::json!({ "id": id, "name": name, "project_id": project_id }).to_string();
+    move_to_trash(conn, "secret_category", &name, &data, &project_id)?;
 
     conn.execute("DELETE FROM secrets WHERE category_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
@@ -754,6 +769,13 @@ pub fn get_note_folders(state: State<'_, AppState>, project_id: String) -> Resul
 pub fn delete_note_folder(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let (name, project_id): (String, String) = conn
+        .query_row("SELECT name, project_id FROM note_folders WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|e| e.to_string())?;
+
+    let data = serde_json::json!({ "id": id, "name": name, "project_id": project_id }).to_string();
+    move_to_trash(conn, "note_folder", &name, &data, &project_id)?;
 
     conn.execute("DELETE FROM notes WHERE folder_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
@@ -1251,6 +1273,13 @@ pub fn update_todo(
 pub fn delete_todo(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
+
+    let (title, project_id): (String, String) = conn
+        .query_row("SELECT title, project_id FROM todos WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|e| e.to_string())?;
+
+    let data = serde_json::json!({ "id": id, "title": title, "project_id": project_id }).to_string();
+    move_to_trash(conn, "todo", &title, &data, &project_id)?;
 
     conn.execute("DELETE FROM todos WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;

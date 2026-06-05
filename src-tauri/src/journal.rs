@@ -144,6 +144,13 @@ pub fn delete_journal_entry(state: State<'_, AppState>, id: String) -> Result<()
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
 
+    let (date, project_id): (String, String) = conn
+        .query_row("SELECT date, project_id FROM journal_entries WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|e| e.to_string())?;
+
+    let data = serde_json::json!({ "id": id, "date": date, "project_id": project_id }).to_string();
+    crate::commands::move_to_trash(conn, "journal", &format!("Journal {}", date), &data, &project_id)?;
+
     conn.execute("DELETE FROM time_sessions WHERE journal_entry_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM journal_entries WHERE id = ?1", params![id])

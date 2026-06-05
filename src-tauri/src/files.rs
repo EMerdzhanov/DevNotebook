@@ -129,7 +129,14 @@ pub fn delete_file_folder(state: State<'_, AppState>, id: String) -> Result<(), 
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
 
-    // Get all file paths to delete from disk
+    let (name, project_id): (String, String) = conn
+        .query_row("SELECT name, project_id FROM file_folders WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|e| e.to_string())?;
+
+    let data = serde_json::json!({ "id": id, "name": name, "project_id": project_id }).to_string();
+    crate::commands::move_to_trash(conn, "file_folder", &name, &data, &project_id)?;
+
+    // Delete files from disk
     let mut stmt = conn
         .prepare("SELECT file_path, thumbnail_path FROM files WHERE folder_id = ?1")
         .map_err(|e| e.to_string())?;
@@ -139,18 +146,14 @@ pub fn delete_file_folder(state: State<'_, AppState>, id: String) -> Result<(), 
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
 
-    // Delete files from disk
     let app_data = state.db.db_path.parent().unwrap();
     for (file_path, thumb_path) in &paths {
-        let full_path = app_data.join(file_path);
-        let _ = std::fs::remove_file(&full_path);
+        let _ = std::fs::remove_file(app_data.join(file_path));
         if !thumb_path.is_empty() {
-            let full_thumb = app_data.join(thumb_path);
-            let _ = std::fs::remove_file(&full_thumb);
+            let _ = std::fs::remove_file(app_data.join(thumb_path));
         }
     }
 
-    // Delete from DB
     conn.execute("DELETE FROM files WHERE folder_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM file_folders WHERE id = ?1", params![id])
@@ -367,13 +370,16 @@ pub fn delete_file(state: State<'_, AppState>, file_id: String) -> Result<(), St
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
 
-    let (file_path, thumb_path): (String, String) = conn
+    let (filename, file_path, thumb_path, project_id): (String, String, String, String) = conn
         .query_row(
-            "SELECT file_path, thumbnail_path FROM files WHERE id = ?1",
+            "SELECT filename, file_path, thumbnail_path, project_id FROM files WHERE id = ?1",
             params![file_id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
         .map_err(|e| e.to_string())?;
+
+    let data = serde_json::json!({ "id": file_id, "filename": filename, "project_id": project_id }).to_string();
+    crate::commands::move_to_trash(conn, "file", &filename, &data, &project_id)?;
 
     let app_data = state.db.db_path.parent().unwrap();
     let _ = std::fs::remove_file(app_data.join(&file_path));

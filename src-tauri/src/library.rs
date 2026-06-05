@@ -166,6 +166,13 @@ pub fn delete_library_entry(state: State<'_, AppState>, id: String) -> Result<()
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;
 
+    let (title, entry_type, project_id): (String, String, String) = conn
+        .query_row("SELECT title, entry_type, project_id FROM library_entries WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+        .map_err(|e| e.to_string())?;
+
+    let data = serde_json::json!({ "id": id, "title": title, "entry_type": entry_type, "project_id": project_id }).to_string();
+    crate::commands::move_to_trash(conn, "library", &title, &data, &project_id)?;
+
     conn.execute("DELETE FROM library_entries WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
 

@@ -6,6 +6,7 @@ import type {
   NoteFolder,
   FileFolder,
   Favorite,
+  LibraryEntry,
   AppScreen,
   ViewState,
 } from "./types";
@@ -26,6 +27,10 @@ import JournalView from "./components/JournalView";
 import NewProjectModal from "./components/NewProjectModal";
 import GlobalSearch from "./components/GlobalSearch";
 import ProjectInfoView from "./components/ProjectInfoView";
+import CredentialEditor from "./components/CredentialEditor";
+import ChecklistEditor from "./components/ChecklistEditor";
+import CodeSnippetEditor from "./components/CodeSnippetEditor";
+import WorkflowEditor from "./components/WorkflowEditor";
 import TodoPanel from "./components/TodoPanel";
 import LibraryPanel from "./components/LibraryPanel";
 import CommandPalette from "./components/CommandPalette";
@@ -61,6 +66,7 @@ export default function App() {
   const [noteFolders, setNoteFolders] = useState<NoteFolder[]>([]);
   const [availableNoteFolderTemplates, setAvailableNoteFolderTemplates] = useState<string[]>([]);
   const [currentNotes, setCurrentNotes] = useState<Note[]>([]);
+  const [projectLibraryEntries, setProjectLibraryEntries] = useState<LibraryEntry[]>([]);
 
   const [availableTemplates, setAvailableTemplates] = useState<string[]>([]);
   const [fileFolders, setFileFolders] = useState<FileFolder[]>([]);
@@ -227,6 +233,12 @@ export default function App() {
       setAvailableFileFolderTemplates(folderTemplates);
       setFavorites(favs);
       setCurrentNotes([]);
+
+      // Load project-linked library entries
+      try {
+        const libEntries = await api.getLibraryEntries(projectId);
+        setProjectLibraryEntries(libEntries.filter((e) => !e.is_global));
+      } catch { setProjectLibraryEntries([]); }
 
       // Select first category by default
       if (cats.length > 0) {
@@ -663,6 +675,20 @@ export default function App() {
               onDeleteNoteFolder={handleDeleteNoteFolder}
               onDeleteFileFolder={handleDeleteFileFolder}
               onToggleFavorite={handleToggleFavorite}
+              onCreateLibraryEntry={async (entryType: string) => {
+                if (!activeProjectId) return;
+                try {
+                  const entry = await api.createLibraryEntry(activeProjectId, entryType, entryType, false);
+                  const libEntries = await api.getLibraryEntries(activeProjectId);
+                  setProjectLibraryEntries(libEntries.filter((e: LibraryEntry) => !e.is_global));
+                  setViewState({ view: "libraryEntry", entryId: entry.id });
+                } catch (err) {
+                  console.error("Failed to create library entry:", err);
+                }
+              }}
+              projectLibraryEntries={projectLibraryEntries}
+              activeLibraryEntryId={viewState?.view === "libraryEntry" ? viewState.entryId : null}
+              onSelectLibraryEntry={(id: string) => setViewState({ view: "libraryEntry", entryId: id })}
               width={sidebarWidth}
               onWidthChange={setSidebarWidth}
               collapsed={sidebarCollapsed}
@@ -714,6 +740,28 @@ export default function App() {
                 projectId={activeProjectId}
               />
             )}
+            {viewState?.view === "libraryEntry" && (() => {
+              const entry = projectLibraryEntries.find((e) => e.id === viewState.entryId);
+              if (!entry) return null;
+              const reloadLib = async () => {
+                if (activeProjectId) {
+                  const libEntries = await api.getLibraryEntries(activeProjectId);
+                  setProjectLibraryEntries(libEntries.filter((e: LibraryEntry) => !e.is_global));
+                }
+              };
+              const props = { entry, onSaved: reloadLib, onDelete: () => {} };
+              if (entry.entry_type === "Credentials") return <CredentialEditor key={entry.id} {...props} />;
+              if (entry.entry_type === "Checklist") return <ChecklistEditor key={entry.id} {...props} />;
+              if (entry.entry_type === "Code Snippet") return <CodeSnippetEditor key={entry.id} {...props} />;
+              if (entry.entry_type === "Workflow") return <WorkflowEditor key={entry.id} {...props} />;
+              // Fallback: show in library view
+              return <div className="paper-texture flex flex-1 items-center justify-center text-text-muted">
+                <div className="text-center">
+                  <div className="text-[14px]">{entry.title}</div>
+                  <div className="mt-1 text-[12px] text-text-dim">Open in Library for full editing</div>
+                </div>
+              </div>;
+            })()}
             {!viewState && (
               <div className="paper-texture flex flex-1 items-center justify-center text-text-muted">
                 Select a category or note from the sidebar

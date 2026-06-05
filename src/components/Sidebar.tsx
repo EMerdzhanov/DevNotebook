@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
-import type { SecretCategory, NoteFolder, FileFolder, Favorite } from "../types";
+import type { SecretCategory, NoteFolder, FileFolder, Favorite, LibraryEntry } from "../types";
 import ConfirmDialog from "./ConfirmDialog";
-import { SECTION_ICON_MAP, FOLDER_ICON_MAP, NOTE_ICON_MAP, IconFile } from "./Icons";
+import { SECTION_ICON_MAP, FOLDER_ICON_MAP, NOTE_ICON_MAP, IconFile, IconBolt, IconCheck, IconCode, IconWrench } from "./Icons";
 
 interface SidebarProps {
   categories: SecretCategory[];
@@ -26,6 +26,10 @@ interface SidebarProps {
   onDeleteNoteFolder: (id: string) => void;
   onDeleteFileFolder: (id: string) => void;
   onToggleFavorite: (itemId: string, itemType: string, itemName: string) => void;
+  onCreateLibraryEntry: (entryType: string) => void;
+  projectLibraryEntries: LibraryEntry[];
+  activeLibraryEntryId: string | null;
+  onSelectLibraryEntry: (id: string) => void;
   width: number;
   onWidthChange: (width: number) => void;
   collapsed: boolean;
@@ -55,6 +59,10 @@ export default function Sidebar({
   onDeleteNoteFolder,
   onDeleteFileFolder,
   onToggleFavorite,
+  onCreateLibraryEntry,
+  projectLibraryEntries,
+  activeLibraryEntryId,
+  onSelectLibraryEntry,
   width: sidebarWidth,
   onWidthChange: setSidebarWidth,
   collapsed,
@@ -388,6 +396,32 @@ export default function Sidebar({
             )}
           </button>
         ))}
+        {/* Linked Library Entries */}
+        {projectLibraryEntries.length > 0 && (
+          <>
+            <div className="mt-3 px-4 py-1 text-[9px] font-medium uppercase tracking-wider text-text-dim">
+              Linked Library
+            </div>
+            {projectLibraryEntries.map((entry) => {
+              const Icon = LIBRARY_ENTRY_TYPES.find((t) => t.name === entry.entry_type)?.Icon || IconFile;
+              return (
+                <button
+                  key={entry.id}
+                  className={`flex w-full items-center gap-2 px-4 py-1.5 text-left text-[12px] transition-colors ${
+                    activeLibraryEntryId === entry.id
+                      ? "border-l-2 border-accent bg-bg-card text-text-primary"
+                      : "border-l-2 border-transparent text-text-secondary hover:text-text-primary"
+                  }`}
+                  onClick={() => onSelectLibraryEntry(entry.id)}
+                >
+                  <span className="text-accent"><Icon size={12} /></span>
+                  <span className="truncate">{entry.title}</span>
+                </button>
+              );
+            })}
+          </>
+        )}
+
         <button
           className="w-full border-t border-border-subtle px-4 py-2 text-left text-[13px] text-text-dim transition-colors hover:text-accent"
           onClick={() => setNoteMenuOpen(true)}
@@ -399,6 +433,10 @@ export default function Sidebar({
             suggestions={availableNoteFolderTemplates}
             onSelect={(name) => {
               onAddNoteFolder(name);
+              setNoteMenuOpen(false);
+            }}
+            onCreateLibraryEntry={(type) => {
+              onCreateLibraryEntry(type);
               setNoteMenuOpen(false);
             }}
             onClose={() => setNoteMenuOpen(false)}
@@ -457,13 +495,22 @@ export default function Sidebar({
 
 // ── File Folder Menu ──
 
+const LIBRARY_ENTRY_TYPES: { name: string; Icon: React.FC<{ size?: number }> }[] = [
+  { name: "Workflow", Icon: IconBolt },
+  { name: "Checklist", Icon: IconCheck },
+  { name: "Code Snippet", Icon: IconCode },
+  { name: "Setup Guide", Icon: IconWrench },
+];
+
 function NoteFolderMenu({
   suggestions,
   onSelect,
+  onCreateLibraryEntry,
   onClose,
 }: {
   suggestions: string[];
   onSelect: (name: string) => void;
+  onCreateLibraryEntry: (type: string) => void;
   onClose: () => void;
 }) {
   const [customInput, setCustomInput] = useState(false);
@@ -498,6 +545,23 @@ function NoteFolderMenu({
               ))}
             </div>
           )}
+
+          {/* Structured library entry types */}
+          <div className="border-t border-border-subtle px-3 pt-2 pb-1">
+            <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-text-dim">Structured</div>
+            <div className="grid grid-cols-2 gap-2">
+              {LIBRARY_ENTRY_TYPES.map(({ name, Icon }) => (
+                <button
+                  key={name}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-bg-card px-3 py-2.5 text-left transition-colors hover:border-accent/50 hover:bg-bg-input"
+                  onClick={() => onCreateLibraryEntry(name)}
+                >
+                  <span className="text-accent"><Icon size={16} /></span>
+                  <span className="text-[12px] text-text-secondary">{name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="border-t border-border-subtle px-3 pt-3 pb-2">
             {!customInput ? (

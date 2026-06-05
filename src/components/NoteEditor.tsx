@@ -101,6 +101,39 @@ export default function NoteEditor({
     }
   }, [initialTitle]);
 
+  // Floating copy button for code blocks
+  const [copyBtnPos, setCopyBtnPos] = useState<{ top: number; right: number; pre: HTMLPreElement } | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState(false);
+
+  useEffect(() => {
+    const container = document.querySelector(".prose-editor");
+    if (!container) return;
+
+    const handleMouseOver = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const pre = target.closest("pre") as HTMLPreElement | null;
+      if (pre) {
+        const rect = pre.getBoundingClientRect();
+        setCopyBtnPos({ top: rect.top + 8, right: window.innerWidth - rect.right + 8, pre });
+      }
+    };
+
+    const handleMouseLeave = (e: MouseEvent) => {
+      const target = e.relatedTarget as HTMLElement | null;
+      if (!target?.closest("pre") && !target?.closest(".floating-code-copy")) {
+        setCopyBtnPos(null);
+        setCopyFeedback(false);
+      }
+    };
+
+    container.addEventListener("mouseover", handleMouseOver);
+    container.addEventListener("mouseleave", handleMouseLeave as EventListener);
+    return () => {
+      container.removeEventListener("mouseover", handleMouseOver);
+      container.removeEventListener("mouseleave", handleMouseLeave as EventListener);
+    };
+  }, [editor]);
+
   const handleTitleChange = (value: string) => {
     titleValueRef.current = value;
     const content = editor ? JSON.stringify(editor.getJSON()) : initialContent;
@@ -177,6 +210,27 @@ export default function NoteEditor({
 
         <EditorContent editor={editor} />
       </div>
+
+      {/* Floating copy button for code blocks */}
+      {copyBtnPos && (
+        <button
+          className={`floating-code-copy fixed z-20 rounded border px-2.5 py-1 text-[11px] transition-colors ${
+            copyFeedback
+              ? "border-status-connected bg-status-connected/20 text-status-connected"
+              : "border-border bg-bg-input text-text-muted hover:border-accent hover:text-accent"
+          }`}
+          style={{ top: copyBtnPos.top, right: copyBtnPos.right }}
+          onClick={() => {
+            const code = copyBtnPos.pre.querySelector("code");
+            navigator.clipboard.writeText(code?.textContent || copyBtnPos.pre.textContent || "");
+            setCopyFeedback(true);
+            setTimeout(() => setCopyFeedback(false), 2000);
+          }}
+          onMouseLeave={() => { setCopyBtnPos(null); setCopyFeedback(false); }}
+        >
+          {copyFeedback ? "Copied!" : "Copy"}
+        </button>
+      )}
     </div>
   );
 }

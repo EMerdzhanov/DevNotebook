@@ -15,6 +15,9 @@ import * as api from "../hooks/useTauri";
 import ConfirmDialog from "./ConfirmDialog";
 import { LIBRARY_ICON_MAP, IconFile } from "./Icons";
 import CredentialEditor from "./CredentialEditor";
+import ChecklistEditor from "./ChecklistEditor";
+import CodeSnippetEditor from "./CodeSnippetEditor";
+import WorkflowEditor from "./WorkflowEditor";
 
 const lowlight = createLowlight(common);
 
@@ -180,6 +183,27 @@ export default function LibraryView({ autoCreate = false }: { autoCreate?: boole
       <div className="paper-texture flex flex-1 flex-col overflow-hidden">
         {activeEntry && activeEntry.entry_type === "Credentials" ? (
           <CredentialEditor
+            key={activeEntry.id}
+            entry={activeEntry}
+            onSaved={loadEntries}
+            onDelete={() => setDeleteConfirm(activeEntry.id)}
+          />
+        ) : activeEntry && activeEntry.entry_type === "Checklist" ? (
+          <ChecklistEditor
+            key={activeEntry.id}
+            entry={activeEntry}
+            onSaved={loadEntries}
+            onDelete={() => setDeleteConfirm(activeEntry.id)}
+          />
+        ) : activeEntry && activeEntry.entry_type === "Code Snippet" ? (
+          <CodeSnippetEditor
+            key={activeEntry.id}
+            entry={activeEntry}
+            onSaved={loadEntries}
+            onDelete={() => setDeleteConfirm(activeEntry.id)}
+          />
+        ) : activeEntry && activeEntry.entry_type === "Workflow" ? (
+          <WorkflowEditor
             key={activeEntry.id}
             entry={activeEntry}
             onSaved={loadEntries}

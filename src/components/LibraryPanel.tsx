@@ -14,6 +14,9 @@ import type { LibraryEntry } from "../types";
 import * as api from "../hooks/useTauri";
 import { LIBRARY_ICON_MAP, IconFile } from "./Icons";
 import CredentialEditor from "./CredentialEditor";
+import ChecklistEditor from "./ChecklistEditor";
+import CodeSnippetEditor from "./CodeSnippetEditor";
+import WorkflowEditor from "./WorkflowEditor";
 
 const lowlight = createLowlight(common);
 
@@ -218,6 +221,24 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
       <div className="flex-1 overflow-hidden">
         {activeEntry && activeEntry.entry_type === "Credentials" ? (
           <CredentialEditor
+            entry={activeEntry}
+            onSaved={loadEntries}
+            onDelete={() => { handleDelete(activeEntry.id); }}
+          />
+        ) : activeEntry && activeEntry.entry_type === "Checklist" ? (
+          <ChecklistEditor
+            entry={activeEntry}
+            onSaved={loadEntries}
+            onDelete={() => { handleDelete(activeEntry.id); }}
+          />
+        ) : activeEntry && activeEntry.entry_type === "Code Snippet" ? (
+          <CodeSnippetEditor
+            entry={activeEntry}
+            onSaved={loadEntries}
+            onDelete={() => { handleDelete(activeEntry.id); }}
+          />
+        ) : activeEntry && activeEntry.entry_type === "Workflow" ? (
+          <WorkflowEditor
             entry={activeEntry}
             onSaved={loadEntries}
             onDelete={() => { handleDelete(activeEntry.id); }}

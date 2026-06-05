@@ -31,6 +31,7 @@ import CredentialEditor from "./components/CredentialEditor";
 import ChecklistEditor from "./components/ChecklistEditor";
 import CodeSnippetEditor from "./components/CodeSnippetEditor";
 import WorkflowEditor from "./components/WorkflowEditor";
+import LibraryEntryEditor from "./components/LibraryEntryEditor";
 import TodoPanel from "./components/TodoPanel";
 import LibraryPanel from "./components/LibraryPanel";
 import CommandPalette from "./components/CommandPalette";
@@ -754,13 +755,8 @@ export default function App() {
               if (entry.entry_type === "Checklist") return <ChecklistEditor key={entry.id} {...props} />;
               if (entry.entry_type === "Code Snippet") return <CodeSnippetEditor key={entry.id} {...props} />;
               if (entry.entry_type === "Workflow") return <WorkflowEditor key={entry.id} {...props} />;
-              // Fallback: show in library view
-              return <div className="paper-texture flex flex-1 items-center justify-center text-text-muted">
-                <div className="text-center">
-                  <div className="text-[14px]">{entry.title}</div>
-                  <div className="mt-1 text-[12px] text-text-dim">Open in Library for full editing</div>
-                </div>
-              </div>;
+              // Fallback: TipTap editor for Setup Guide, Reference, and custom types
+              return <LibraryEntryEditor key={entry.id} {...props} />;
             })()}
             {!viewState && (
               <div className="paper-texture flex flex-1 items-center justify-center text-text-muted">

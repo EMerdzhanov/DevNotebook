@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Secret } from "../types";
 import * as api from "../hooks/useTauri";
+import PasswordGenerator from "./PasswordGenerator";
 
 interface StructuredSecretModalProps {
   categoryId: string;
@@ -110,6 +111,7 @@ export default function StructuredSecretModal({
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [showPwGen, setShowPwGen] = useState<string | null>(null);
   const [totpSetup, setTotpSetup] = useState(false);
   const [totpInput, setTotpInput] = useState("");
   const [totpCode, setTotpCode] = useState<string | null>(null);
@@ -232,9 +234,12 @@ export default function StructuredSecretModal({
           <div key={field.key} className="mb-3">
             <label className="mb-1 flex items-center justify-between text-[12px] text-text-secondary">
               <span>{field.label}{field.required ? " *" : ""}</span>
-              {(field.type === "password" || field.generated) && values[field.key] && (
+              {(field.type === "password" || field.generated) && (
                 <div className="flex gap-1">
                   {field.type === "password" && (
+                    <button type="button" className="text-[10px] text-accent hover:text-accent/80" onClick={() => setShowPwGen(field.key)}>Generate</button>
+                  )}
+                  {field.type === "password" && values[field.key] && (
                     <button
                       type="button"
                       className="text-[10px] text-text-dim hover:text-text-primary"
@@ -243,13 +248,15 @@ export default function StructuredSecretModal({
                       {showPasswords[field.key] ? "Hide" : "Show"}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className={`text-[10px] ${copied === field.key ? "text-status-connected" : "text-text-dim hover:text-accent"}`}
-                    onClick={() => handleCopy(field.key)}
-                  >
-                    {copied === field.key ? "Copied!" : "Copy"}
-                  </button>
+                  {values[field.key] && (
+                    <button
+                      type="button"
+                      className={`text-[10px] ${copied === field.key ? "text-status-connected" : "text-text-dim hover:text-accent"}`}
+                      onClick={() => handleCopy(field.key)}
+                    >
+                      {copied === field.key ? "Copied!" : "Copy"}
+                    </button>
+                  )}
                 </div>
               )}
             </label>
@@ -315,6 +322,14 @@ export default function StructuredSecretModal({
             )}
           </div>
         ))}
+
+        {/* Password generator modal */}
+        {showPwGen && (
+          <PasswordGenerator
+            onGenerated={(pw) => setValue(showPwGen, pw)}
+            onClose={() => setShowPwGen(null)}
+          />
+        )}
 
         {/* Env export button */}
         {categoryName === "Env Variables" && values.env_pairs && (

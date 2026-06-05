@@ -24,6 +24,8 @@ import ProjectDashboard from "./components/ProjectDashboard";
 import LibraryView from "./components/LibraryView";
 import JournalView from "./components/JournalView";
 import NewProjectModal from "./components/NewProjectModal";
+import GlobalSearch from "./components/GlobalSearch";
+import ProjectInfoView from "./components/ProjectInfoView";
 import TodoPanel from "./components/TodoPanel";
 import LibraryPanel from "./components/LibraryPanel";
 import CommandPalette from "./components/CommandPalette";
@@ -65,6 +67,8 @@ export default function App() {
   const [availableFileFolderTemplates, setAvailableFileFolderTemplates] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [autoLockTimer, setAutoLockTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [todoPanelOpen, setTodoPanelOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -127,13 +131,47 @@ export default function App() {
 
   const { isDragging } = useDragDrop(handleFilesDropped);
 
+  // Auto-lock on inactivity
+  useEffect(() => {
+    if (screen !== "main") return;
+
+    const resetTimer = async () => {
+      if (autoLockTimer) clearTimeout(autoLockTimer);
+      try {
+        const minutes = await api.getAutoLockTimeout();
+        if (minutes > 0) {
+          const timer = setTimeout(async () => {
+            try {
+              await api.lockVault();
+              setScreen("login");
+            } catch {}
+          }, minutes * 60 * 1000);
+          setAutoLockTimer(timer);
+        }
+      } catch {}
+    };
+
+    resetTimer();
+    const events = ["mousedown", "keydown", "mousemove", "touchstart"];
+    const handler = () => resetTimer();
+    events.forEach((e) => window.addEventListener(e, handler, { passive: true }));
+
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, handler));
+      if (autoLockTimer) clearTimeout(autoLockTimer);
+    };
+  }, [screen]);
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
-      if (meta && e.key === "k") {
+      if (meta && e.shiftKey && e.key === "k") {
         e.preventDefault();
         setCommandPaletteOpen((v) => !v);
+      } else if (meta && e.key === "k") {
+        e.preventDefault();
+        setGlobalSearchOpen((v) => !v);
       } else if (meta && e.key === "/") {
         e.preventDefault();
         setShortcutsOpen((v) => !v);
@@ -510,7 +548,9 @@ export default function App() {
       onCreateProject={handleCreateProject}
       onCloseProject={handleCloseProject}
       onRenameProject={handleRenameProject}
-      onOpenDashboard={() => setViewState(viewState?.view === "dashboard" ? null : { view: "dashboard" })}
+        onOpenProjectInfo={() => setViewState(viewState?.view === "projectInfo" ? null : { view: "projectInfo" })}
+        isProjectInfoActive={viewState?.view === "projectInfo"}
+        onOpenDashboard={() => setViewState(viewState?.view === "dashboard" ? null : { view: "dashboard" })}
       isDashboardActive={viewState?.view === "dashboard"}
       onOpenLibrary={() => { setLibraryAutoCreate(false); setViewState(viewState?.view === "library" ? null : { view: "library" }); }}
       isLibraryActive={viewState?.view === "library"}
@@ -587,7 +627,16 @@ export default function App() {
       )}
 
       {/* Project view (sidebars + content + todo + library) */}
-      {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && viewState?.view !== "library" && viewState?.view !== "journal" && (
+      {viewState?.view === "projectInfo" && activeProjectId && (
+        <div className="flex-1 overflow-y-auto">
+          <ProjectInfoView
+            project={projects.find((p) => p.id === activeProjectId) || projects[0]}
+            onSaved={reloadOpenProjects}
+          />
+        </div>
+      )}
+
+      {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && viewState?.view !== "library" && viewState?.view !== "journal" && viewState?.view !== "projectInfo" && (
         <>
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar — spans full height including tab bar area */}
@@ -694,6 +743,20 @@ export default function App() {
         bluetoothStatus={bluetooth.status}
         bluetoothDevice={bluetooth.pairedDevice?.name || ""}
         lockCountdown={bluetooth.countdown}
+      />
+
+      {/* Global Search */}
+      <GlobalSearch
+        isOpen={globalSearchOpen}
+        onClose={() => setGlobalSearchOpen(false)}
+        onNavigate={(itemType, _itemId, projectId) => {
+          // Open the project and navigate to the item type
+          if (projectId) {
+            handleOpenExistingProject(projectId);
+          }
+          if (itemType === "library") setViewState({ view: "library" });
+          else if (itemType === "journal") setViewState({ view: "journal" });
+        }}
       />
 
       {/* Command Palette */}

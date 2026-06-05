@@ -1,6 +1,7 @@
 mod bluetooth;
 mod commands;
 mod credentials;
+mod extras;
 mod crypto;
 mod db;
 mod files;
@@ -112,6 +113,15 @@ pub fn run() {
             commands::bluetooth_paired_device,
             commands::bluetooth_set_sensitivity,
             commands::bluetooth_get_sensitivity,
+            extras::global_search,
+            extras::generate_password,
+            extras::export_vault,
+            extras::duplicate_project,
+            extras::parse_env_file,
+            extras::get_auto_lock_timeout,
+            extras::set_auto_lock_timeout,
+            extras::get_project_templates,
+            extras::create_project_from_template,
             credentials::encrypt_credential_field,
             credentials::decrypt_credential_field,
             credentials::generate_totp,

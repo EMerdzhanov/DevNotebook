@@ -5,7 +5,8 @@ interface KeyboardShortcutsProps {
 
 const shortcuts = [
   { category: "Navigation", items: [
-    { keys: ["Cmd", "K"], description: "Open command palette" },
+    { keys: ["Cmd", "K"], description: "Global search" },
+    { keys: ["Cmd", "Shift", "K"], description: "Command palette" },
     { keys: ["Cmd", "?"], description: "Show keyboard shortcuts" },
     { keys: ["Space"], description: "Quick Look file preview" },
     { keys: ["Esc"], description: "Close modal / Quick Look" },

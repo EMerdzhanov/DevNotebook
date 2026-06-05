@@ -186,6 +186,17 @@ export default function ProjectDashboard({
               <div className="mt-3 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                 <button
                   className="rounded bg-bg-input px-2 py-1 text-[10px] text-text-secondary hover:text-accent"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await api.duplicateProject(project.id, `${project.name} (Copy)`);
+                    await loadProjects();
+                    onProjectsChanged();
+                  }}
+                >
+                  Duplicate
+                </button>
+                <button
+                  className="rounded bg-bg-input px-2 py-1 text-[10px] text-text-secondary hover:text-accent"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleArchive(project.id);

@@ -175,6 +175,36 @@ export const generateTotp = (encryptedSecretB64: string) =>
 export const validateTotpSecret = (secret: string) =>
   invoke<boolean>("validate_totp_secret", { secret });
 
+// Global Search
+export const globalSearch = (query: string) =>
+  invoke<{ id: string; item_type: string; title: string; preview: string; project_id: string; project_name: string }[]>("global_search", { query });
+
+// Password Generator
+export const generatePassword = (length: number, uppercase: boolean, lowercase: boolean, numbers: boolean, symbols: boolean) =>
+  invoke<string>("generate_password", { length, uppercase, lowercase, numbers, symbols });
+
+// Export
+export const exportVault = () => invoke<string>("export_vault");
+
+// Duplicate Project
+export const duplicateProject = (sourceId: string, newName: string) =>
+  invoke<string>("duplicate_project", { sourceId, newName });
+
+// Import .env
+export const parseEnvFile = (content: string) =>
+  invoke<[string, string][]>("parse_env_file", { content });
+
+// Auto-lock
+export const getAutoLockTimeout = () => invoke<number>("get_auto_lock_timeout");
+export const setAutoLockTimeout = (minutes: number) =>
+  invoke<void>("set_auto_lock_timeout", { minutes });
+
+// Project Templates
+export const getProjectTemplates = () =>
+  invoke<{ id: string; name: string; description: string; platform: string; secret_categories: string[]; note_folders: string[]; file_folders: string[] }[]>("get_project_templates");
+export const createProjectFromTemplate = (templateId: string, name: string) =>
+  invoke<string>("create_project_from_template", { templateId, name });
+
 // Reorder
 export const reorderItems = (table: string, ids: string[]) =>
   invoke<void>("reorder_items", { table, ids });

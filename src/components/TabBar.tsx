@@ -8,6 +8,8 @@ interface TabBarProps {
   onCreateProject: () => void;
   onCloseProject: (id: string) => void;
   onRenameProject: (id: string, name: string) => void;
+  onOpenProjectInfo: () => void;
+  isProjectInfoActive: boolean;
   onOpenDashboard: () => void;
   isDashboardActive: boolean;
   onOpenLibrary: () => void;
@@ -28,6 +30,8 @@ export default function TabBar({
   onCreateProject,
   onCloseProject,
   onRenameProject,
+  onOpenProjectInfo,
+  isProjectInfoActive,
   onOpenDashboard,
   isDashboardActive,
   onOpenLibrary,
@@ -127,9 +131,20 @@ export default function TabBar({
         +
       </button>
 
-      {/* Dashboard, Trash & Settings - far right */}
+      {/* Project Info, Dashboard, Trash & Settings - far right */}
       <button
         className={`ml-auto flex items-center justify-center px-2 py-1.5 transition-colors ${
+          isProjectInfoActive ? "text-accent" : "text-text-dim hover:text-text-secondary"
+        }`}
+        onClick={onOpenProjectInfo}
+        title="Project Info"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+      </button>
+      <button
+        className={`flex items-center justify-center px-2 py-1.5 transition-colors ${
           isDashboardActive ? "text-accent" : "text-text-dim hover:text-text-secondary"
         }`}
         onClick={onOpenDashboard}

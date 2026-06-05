@@ -4,16 +4,6 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use totp_rs::{Algorithm, Secret, TOTP};
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct CredentialData {
-    pub service: String,
-    pub username: String,
-    pub encrypted_password: String,
-    pub url: String,
-    pub totp_secret: String, // encrypted
-    pub notes: String,
-}
-
 #[derive(Serialize)]
 pub struct TotpCode {
     pub code: String,

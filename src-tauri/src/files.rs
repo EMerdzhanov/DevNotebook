@@ -146,7 +146,7 @@ pub fn delete_file_folder(state: State<'_, AppState>, id: String) -> Result<(), 
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
 
-    let app_data = state.db.db_path.parent().unwrap();
+    let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     for (file_path, thumb_path) in &paths {
         let _ = std::fs::remove_file(app_data.join(file_path));
         if !thumb_path.is_empty() {
@@ -195,7 +195,7 @@ pub fn add_file(
     let file_id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
-    let app_data = state.db.db_path.parent().unwrap();
+    let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let files_dir = app_data.join("files").join(&project_id);
     std::fs::create_dir_all(&files_dir).map_err(|e| e.to_string())?;
 
@@ -299,7 +299,7 @@ pub fn get_file_path(state: State<'_, AppState>, file_id: String) -> Result<Stri
         )
         .map_err(|e| e.to_string())?;
 
-    let app_data = state.db.db_path.parent().unwrap();
+    let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let full_path = app_data.join(&file_path);
 
     if is_encrypted {
@@ -341,7 +341,7 @@ pub fn get_thumbnail_path(state: State<'_, AppState>, file_id: String) -> Result
         return Err("No thumbnail available".to_string());
     }
 
-    let app_data = state.db.db_path.parent().unwrap();
+    let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let full_path = app_data.join(&thumb_path);
 
     if is_encrypted {
@@ -381,7 +381,7 @@ pub fn delete_file(state: State<'_, AppState>, file_id: String) -> Result<(), St
     let data = serde_json::json!({ "id": file_id, "filename": filename, "project_id": project_id }).to_string();
     crate::commands::move_to_trash(conn, "file", &filename, &data, &project_id)?;
 
-    let app_data = state.db.db_path.parent().unwrap();
+    let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let _ = std::fs::remove_file(app_data.join(&file_path));
     if !thumb_path.is_empty() {
         let _ = std::fs::remove_file(app_data.join(&thumb_path));
@@ -409,7 +409,7 @@ pub fn toggle_file_encryption(state: State<'_, AppState>, file_id: String) -> Re
         )
         .map_err(|e| e.to_string())?;
 
-    let app_data = state.db.db_path.parent().unwrap();
+    let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let full_path = app_data.join(&file_path);
 
     if is_encrypted {
@@ -452,7 +452,7 @@ pub fn open_file(state: State<'_, AppState>, file_id: String) -> Result<(), Stri
         )
         .map_err(|e| e.to_string())?;
 
-    let app_data = state.db.db_path.parent().unwrap();
+    let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let full_path = app_data.join(&file_path);
 
     let open_path = if is_encrypted {
@@ -509,7 +509,7 @@ pub fn export_file(state: State<'_, AppState>, file_id: String, destination: Str
         )
         .map_err(|e| e.to_string())?;
 
-    let app_data = state.db.db_path.parent().unwrap();
+    let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let full_path = app_data.join(&file_path);
 
     if is_encrypted {
@@ -543,7 +543,7 @@ pub fn share_file(state: State<'_, AppState>, file_id: String) -> Result<(), Str
         )
         .map_err(|e| e.to_string())?;
 
-    let app_data = state.db.db_path.parent().unwrap();
+    let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let full_path = app_data.join(&file_path);
 
     let share_path = if is_encrypted {
@@ -610,7 +610,7 @@ pub fn share_file(state: State<'_, AppState>, file_id: String) -> Result<(), Str
 
 #[tauri::command]
 pub fn cleanup_temp_files(state: State<'_, AppState>) -> Result<(), String> {
-    let app_data = state.db.db_path.parent().unwrap();
+    let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let tmp_dir = app_data.join("tmp");
     if tmp_dir.exists() {
         let _ = std::fs::remove_dir_all(&tmp_dir);

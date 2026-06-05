@@ -16,14 +16,6 @@ pub struct LibraryEntry {
     pub updated_at: String,
 }
 
-pub const ENTRY_TYPE_TEMPLATES: &[&str] = &[
-    "Credentials",
-    "Workflow",
-    "Setup Guide",
-    "Code Snippet",
-    "Reference",
-    "Checklist",
-];
 
 #[tauri::command]
 pub fn get_library_entries(

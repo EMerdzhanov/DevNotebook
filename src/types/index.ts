@@ -182,9 +182,6 @@ export interface ProjectSummary {
   entries: JournalEntry[];
 }
 
-export type SidebarItem =
-  | { type: "category"; data: SecretCategory }
-  | { type: "note"; data: Note };
 
 export type ViewState =
   | { view: "secrets"; categoryId: string }

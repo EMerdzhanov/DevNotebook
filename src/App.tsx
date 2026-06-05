@@ -146,7 +146,7 @@ export default function App() {
       } else if (meta && e.key === "t" && screen === "main") {
         e.preventDefault();
         setTodoPanelOpen((v) => !v);
-      } else if (meta && e.key === "b" && screen === "main") {
+      } else if (meta && e.shiftKey && e.key === "l" && screen === "main") {
         e.preventDefault();
         { setLibraryAutoCreate(false); setViewState(viewState?.view === "library" ? null : { view: "library" }); };
       }

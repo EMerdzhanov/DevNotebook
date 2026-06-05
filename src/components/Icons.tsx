@@ -171,10 +171,3 @@ export const LIBRARY_ICON_MAP: Record<string, React.FC<{ size?: number }>> = {
   "Checklist": IconCheck,
 };
 
-export function getIcon(name: string, maps: Record<string, React.FC<{ size?: number }>>[], size = 16) {
-  for (const map of maps) {
-    const Icon = map[name];
-    if (Icon) return <Icon size={size} />;
-  }
-  return <IconFile size={size} />;
-}

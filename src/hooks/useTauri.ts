@@ -165,6 +165,16 @@ export const getRunningTimer = (projectId: string) =>
 export const getProjectSummary = (projectId: string) =>
   invoke<ProjectSummary>("get_project_summary", { projectId });
 
+// Credentials
+export const encryptCredentialField = (value: string) =>
+  invoke<string>("encrypt_credential_field", { value });
+export const decryptCredentialField = (encryptedB64: string) =>
+  invoke<string>("decrypt_credential_field", { encryptedB64 });
+export const generateTotp = (encryptedSecretB64: string) =>
+  invoke<{ code: string; remaining_seconds: number; period: number }>("generate_totp", { encryptedSecretB64 });
+export const validateTotpSecret = (secret: string) =>
+  invoke<boolean>("validate_totp_secret", { secret });
+
 // Reorder
 export const reorderItems = (table: string, ids: string[]) =>
   invoke<void>("reorder_items", { table, ids });

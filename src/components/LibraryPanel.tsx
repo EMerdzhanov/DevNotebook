@@ -13,6 +13,7 @@ import { common, createLowlight } from "lowlight";
 import type { LibraryEntry } from "../types";
 import * as api from "../hooks/useTauri";
 import { LIBRARY_ICON_MAP, IconFile } from "./Icons";
+import CredentialEditor from "./CredentialEditor";
 
 const lowlight = createLowlight(common);
 
@@ -215,7 +216,13 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {activeEntry ? (
+        {activeEntry && activeEntry.entry_type === "Credentials" ? (
+          <CredentialEditor
+            entry={activeEntry}
+            onSaved={loadEntries}
+            onDelete={() => { handleDelete(activeEntry.id); }}
+          />
+        ) : activeEntry ? (
           <LibraryEditor
             entry={activeEntry}
             onSaved={loadEntries}
@@ -223,7 +230,7 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
         ) : (
           <LibraryBrowse
             entries={entries.filter((e) => {
-              if (scopeFilter === "project" && projectId) return e.project_id === projectId || e.is_global;
+              if (scopeFilter === "project" && projectId) return e.project_id === projectId;
               if (scopeFilter === "global") return e.is_global;
               return true;
             }).filter((e) => !typeFilter || e.entry_type === typeFilter)}

@@ -1,5 +1,6 @@
 mod bluetooth;
 mod commands;
+mod credentials;
 mod crypto;
 mod db;
 mod files;
@@ -111,6 +112,10 @@ pub fn run() {
             commands::bluetooth_paired_device,
             commands::bluetooth_set_sensitivity,
             commands::bluetooth_get_sensitivity,
+            credentials::encrypt_credential_field,
+            credentials::decrypt_credential_field,
+            credentials::generate_totp,
+            credentials::validate_totp_secret,
             journal::get_journal_entries,
             journal::get_or_create_today_entry,
             journal::update_journal_entry,

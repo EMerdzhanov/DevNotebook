@@ -37,7 +37,7 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [activeEntry, setActiveEntry] = useState<LibraryEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"all" | "project" | "global">("project");
+  const [scopeFilter, setScopeFilter] = useState<"all" | "project" | "global">("global");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [panelHeight, setPanelHeight] = useState(400);
@@ -107,7 +107,7 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
         <div className="flex items-center gap-2">
           <span className="text-[12px] text-accent">&#9650;</span>
           <span className="text-[11px] font-medium uppercase tracking-wider text-accent">
-            Library
+            Global Library
           </span>
           <span className="rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-medium text-accent">
             {entries.length}
@@ -133,7 +133,7 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-3">
           <span className="text-[11px] font-medium uppercase tracking-wider text-accent">
-            Library
+            Global Library
           </span>
           {activeEntry && (
             <button

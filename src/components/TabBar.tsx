@@ -162,7 +162,7 @@ export default function TabBar({
           isLibraryActive ? "text-accent" : "text-text-dim hover:text-text-secondary"
         }`}
         onClick={onOpenLibrary}
-        title="Library"
+        title="Global Library"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />

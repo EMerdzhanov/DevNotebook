@@ -89,7 +89,7 @@ export default function LibraryView({ autoCreate = false }: { autoCreate?: boole
         <div className="border-b border-border-subtle px-4 py-3">
           <div className="flex items-center justify-between">
             <span className="text-[13px] font-medium uppercase tracking-wider text-accent">
-              Library
+              Global Library
             </span>
             <button
               className="rounded bg-accent px-2.5 py-1 text-[11px] font-medium text-bg-base hover:opacity-90"

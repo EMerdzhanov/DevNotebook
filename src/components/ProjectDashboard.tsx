@@ -261,11 +261,11 @@ export default function ProjectDashboard({
           </div>
         )}
 
-        {/* Library Section */}
+        {/* Global Library Section */}
         <div className="mt-12 border-t border-border pt-8">
           <div className="mb-5 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-text-primary">Library</h2>
+              <h2 className="text-xl font-semibold text-text-primary">Global Library</h2>
               <p className="mt-1 text-[13px] text-text-muted">
                 {libraryEntries.length} entr{libraryEntries.length !== 1 ? "ies" : "y"} — workflows, guides, credentials, and more
               </p>

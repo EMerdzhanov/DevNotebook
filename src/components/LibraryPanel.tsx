@@ -97,6 +97,15 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
     document.addEventListener("mouseup", handleMouseUp);
   }, [panelHeight]);
 
+  // Compute filtered entries
+  const filteredEntries = entries
+    .filter((e) => {
+      if (scopeFilter === "project" && projectId) return e.project_id === projectId;
+      if (scopeFilter === "global") return e.is_global;
+      return true;
+    })
+    .filter((e) => !typeFilter || e.entry_type === typeFilter);
+
   // Collapsed bar
   if (!isOpen) {
     return (
@@ -110,7 +119,7 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
             Global Library
           </span>
           <span className="rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-medium text-accent">
-            {entries.length}
+            {filteredEntries.length}
           </span>
         </div>
         <span className="text-[10px] text-text-dim">Click to expand</span>
@@ -250,11 +259,7 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
           />
         ) : (
           <LibraryBrowse
-            entries={entries.filter((e) => {
-              if (scopeFilter === "project" && projectId) return e.project_id === projectId;
-              if (scopeFilter === "global") return e.is_global;
-              return true;
-            }).filter((e) => !typeFilter || e.entry_type === typeFilter)}
+            entries={filteredEntries}
             onSelect={setActiveEntry}
             onDelete={handleDelete}
           />

@@ -392,7 +392,7 @@ export default function ProjectDashboard({
                         <div className="mt-0.5 flex items-center gap-2 text-[10px] text-text-muted">
                           <span>{entry.entry_type}</span>
                           <span>·</span>
-                          <span>{entry.is_global ? "Global" : "Project"}</span>
+                          <span>{entry.is_global ? "Global" : allProjects.find((p) => p.id === entry.project_id)?.name || "Project"}</span>
                         </div>
                       </div>
                     </div>

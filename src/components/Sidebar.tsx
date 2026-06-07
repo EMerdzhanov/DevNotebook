@@ -398,11 +398,11 @@ export default function Sidebar({
             )}
           </button>
         ))}
-        {/* Linked Library Entries */}
+        {/* Project Library */}
         {projectLibraryEntries.length > 0 && (
           <>
             <div className="mt-3 px-4 py-1 text-[9px] font-medium uppercase tracking-wider text-text-dim">
-              Linked Library
+              Project Library
             </div>
             {projectLibraryEntries.map((entry) => {
               const Icon = LIBRARY_ENTRY_TYPES.find((t) => t.name === entry.entry_type)?.Icon || IconFile;

@@ -170,7 +170,7 @@ export default function LibraryView({ autoCreate = false }: { autoCreate?: boole
                   <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-text-dim">
                     <span>{entry.entry_type}</span>
                     <span>·</span>
-                    <span>{entry.is_global ? "Global" : "Project"}</span>
+                    <span>{entry.is_global ? "Global" : projects.find((p) => p.id === entry.project_id)?.name || "Project"}</span>
                   </div>
                 </div>
               </button>
@@ -215,6 +215,7 @@ export default function LibraryView({ autoCreate = false }: { autoCreate?: boole
             entry={activeEntry}
             onSaved={loadEntries}
             onDelete={() => setDeleteConfirm(activeEntry.id)}
+            projects={projects}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center text-text-muted">
@@ -259,10 +260,12 @@ function LibraryEntryEditor({
   entry,
   onSaved,
   onDelete,
+  projects: editorProjects,
 }: {
   entry: LibraryEntry;
   onSaved: () => void;
   onDelete: () => void;
+  projects: Project[];
 }) {
   const titleRef = useRef<HTMLInputElement>(null);
   const titleValueRef = useRef(entry.title);
@@ -372,7 +375,7 @@ function LibraryEntryEditor({
             {entry.entry_type}
           </span>
           <span className="text-[10px] text-text-dim">
-            {entry.is_global ? "Global" : "Project-linked"}
+            {entry.is_global ? "Global" : editorProjects.find((p) => p.id === entry.project_id)?.name || "Project-linked"}
           </span>
         </div>
         <input

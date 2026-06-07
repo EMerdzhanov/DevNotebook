@@ -41,8 +41,13 @@ export default function WorkflowEditor({ entry, onSaved, onDelete }: WorkflowEdi
     const parsed = parseWorkflow(entry.content);
     setData(parsed);
     setTitle(entry.title);
+  }, [entry.content, entry.title]);
+
+  // Only set initial editing state on entry switch
+  useEffect(() => {
+    const parsed = parseWorkflow(entry.content);
     setEditing(!parsed.steps.length);
-  }, [entry.id, entry.content, entry.title]);
+  }, [entry.id]);
 
   const autoSave = useCallback(
     (newTitle: string, newData: WorkflowData) => {

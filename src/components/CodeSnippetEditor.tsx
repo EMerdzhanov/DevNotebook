@@ -40,8 +40,12 @@ export default function CodeSnippetEditor({ entry, onSaved, onDelete }: CodeSnip
     const parsed = parseSnippet(entry.content);
     setData(parsed);
     setTitle(entry.title);
+  }, [entry.content, entry.title]);
+
+  useEffect(() => {
+    const parsed = parseSnippet(entry.content);
     setEditing(!parsed.code);
-  }, [entry.id, entry.content, entry.title]);
+  }, [entry.id]);
 
   const autoSave = useCallback(
     (newTitle: string, newData: SnippetData) => {

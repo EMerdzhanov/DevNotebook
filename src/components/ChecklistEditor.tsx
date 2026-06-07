@@ -41,8 +41,12 @@ export default function ChecklistEditor({ entry, onSaved, onDelete }: ChecklistE
     const parsed = parseChecklist(entry.content);
     setData(parsed);
     setTitle(entry.title);
+  }, [entry.content, entry.title]);
+
+  useEffect(() => {
+    const parsed = parseChecklist(entry.content);
     setEditing(!parsed.items.length);
-  }, [entry.id, entry.content, entry.title]);
+  }, [entry.id]);
 
   const autoSave = useCallback(
     (newTitle: string, newData: ChecklistData) => {

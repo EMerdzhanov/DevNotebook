@@ -3,7 +3,9 @@ import type { CreateProjectInput, Project } from "../types";
 import * as api from "../hooks/useTauri";
 
 interface NewProjectModalProps {
+  editProject?: Project;
   onCreated: (project: Project) => void;
+  onSaved?: () => void;
   onClose: () => void;
 }
 
@@ -80,9 +82,25 @@ function MultiChipSelect({ label, options, value, onChange }: {
   );
 }
 
-export default function NewProjectModal({ onCreated, onClose }: NewProjectModalProps) {
+export default function NewProjectModal({ editProject, onCreated, onSaved, onClose }: NewProjectModalProps) {
+  const isEdit = !!editProject;
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<CreateProjectInput>({
+  const [form, setForm] = useState<CreateProjectInput>(() => editProject ? {
+    name: editProject.name,
+    description: editProject.description,
+    platform: editProject.platform,
+    environment: editProject.environment,
+    repo_url: editProject.repo_url,
+    prod_url: editProject.prod_url,
+    dashboard_url: editProject.dashboard_url,
+    docs_url: editProject.docs_url,
+    ai_provider: editProject.ai_provider,
+    ai_model: editProject.ai_model,
+    agent_framework: editProject.agent_framework,
+    frontend_stack: editProject.frontend_stack,
+    backend_stack: editProject.backend_stack,
+    database_stack: editProject.database_stack,
+  } : {
     name: "",
     description: "",
     platform: "",
@@ -107,6 +125,12 @@ export default function NewProjectModal({ onCreated, onClose }: NewProjectModalP
     if (!form.name.trim()) return;
     setLoading(true);
     try {
+      if (isEdit && editProject) {
+        await api.updateProject(editProject.id, form);
+        onSaved?.();
+        onClose();
+        return;
+      }
       const project = await api.createProject(form);
       onCreated(project);
     } catch (err) {
@@ -129,7 +153,7 @@ export default function NewProjectModal({ onCreated, onClose }: NewProjectModalP
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <div>
-            <div className="text-[14px] font-medium text-text-primary">New Project</div>
+            <div className="text-[14px] font-medium text-text-primary">{isEdit ? "Edit Project" : "New Project"}</div>
             <div className="text-[11px] text-text-muted">{steps[step].subtitle}</div>
           </div>
           <button className="text-[14px] text-text-muted hover:text-text-primary" onClick={onClose}>&times;</button>
@@ -246,7 +270,7 @@ export default function NewProjectModal({ onCreated, onClose }: NewProjectModalP
                   onClick={handleCreate}
                   disabled={!form.name.trim() || loading}
                 >
-                  Skip & Create
+                  {isEdit ? "Save & Close" : "Skip & Create"}
                 </button>
                 <button
                   className="rounded bg-accent px-4 py-2 text-[13px] font-medium text-bg-base hover:opacity-90 disabled:opacity-50"
@@ -262,7 +286,7 @@ export default function NewProjectModal({ onCreated, onClose }: NewProjectModalP
                 onClick={handleCreate}
                 disabled={!form.name.trim() || loading}
               >
-                {loading ? "Creating..." : "Create Project"}
+                {loading ? (isEdit ? "Saving..." : "Creating...") : (isEdit ? "Save Changes" : "Create Project")}
               </button>
             )}
           </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { Project, LibraryEntry } from "../types";
 import * as api from "../hooks/useTauri";
 import ConfirmDialog from "./ConfirmDialog";
+import NewProjectModal from "./NewProjectModal";
 import { LIBRARY_ICON_MAP, IconFile } from "./Icons";
 
 function LibIcon({ type, size = 16 }: { type: string; size?: number }) {
@@ -31,7 +32,8 @@ export default function ProjectDashboard({
   const [libraryProjectFilter, setLibraryProjectFilter] = useState<string | null>(null);
   const [typeDropOpen, setTypeDropOpen] = useState(false);
   const [scopeDropOpen, setScopeDropOpen] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLibConfirm, setDeleteLibConfirm] = useState<string | null>(null);
 
@@ -74,16 +76,6 @@ export default function ProjectDashboard({
     }
   };
 
-  const handleArchive = async (id: string) => {
-    try {
-      await api.archiveProject(id);
-      await loadProjects();
-      onProjectsChanged();
-    } catch (err) {
-      console.error("Failed to archive project:", err);
-    }
-  };
-
   const handleDelete = async (id: string) => {
     try {
       await api.deleteProject(id);
@@ -108,7 +100,6 @@ export default function ProjectDashboard({
   };
 
   const activeProjects = allProjects.filter((p) => !p.is_archived);
-  const archivedProjects = allProjects.filter((p) => p.is_archived);
 
   return (
     <div className="flex-1 overflow-y-auto p-8">
@@ -120,7 +111,6 @@ export default function ProjectDashboard({
             </h2>
             <p className="mt-1 text-[13px] text-text-muted">
               {activeProjects.length} project{activeProjects.length !== 1 ? "s" : ""}
-              {archivedProjects.length > 0 && ` · ${archivedProjects.length} archived`}
             </p>
           </div>
           <button
@@ -133,134 +123,119 @@ export default function ProjectDashboard({
 
         {/* Active Projects */}
         <div className="grid grid-cols-3 gap-4">
-          {activeProjects.map((project) => (
+          {activeProjects.map((project) => {
+            const isExpanded = expandedProjectId === project.id;
+            const info = [
+              { label: "Platform", value: project.platform },
+              { label: "Environment", value: project.environment },
+              { label: "AI Provider", value: project.ai_provider },
+              { label: "AI Model", value: project.ai_model },
+              { label: "Agent Framework", value: project.agent_framework },
+              { label: "Frontend", value: project.frontend_stack },
+              { label: "Backend", value: project.backend_stack },
+              { label: "Database", value: project.database_stack },
+            ].filter((i) => i.value);
+            const links = [
+              { label: "Repository", url: project.repo_url },
+              { label: "Production", url: project.prod_url },
+              { label: "Dashboard", url: project.dashboard_url },
+              { label: "Documentation", url: project.docs_url },
+            ].filter((l) => l.url);
+
+            return (
             <div
               key={project.id}
-              className="group cursor-pointer rounded-lg border border-border bg-bg-card p-5 transition-colors hover:border-accent/50"
-              onClick={() => handleOpen(project.id)}
+              className={`group rounded-lg border bg-bg-card transition-colors ${isExpanded ? "col-span-3 border-accent/30" : "cursor-pointer border-border hover:border-accent/50"}`}
             >
-              <div className="flex items-start justify-between">
-                <div className="text-[15px] font-medium text-text-primary">
-                  {project.name}
-                </div>
-                <div className="flex gap-1">
-                  {project.environment && (
-                    <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
-                      project.environment === "Production" ? "bg-status-connected/20 text-status-connected" :
-                      project.environment === "Staging" ? "bg-status-warning/20 text-status-warning" :
-                      "bg-bg-input text-text-muted"
-                    }`}>
-                      {project.environment}
-                    </span>
+              {/* Card header — always visible */}
+              <div className="flex items-start justify-between p-5" onClick={() => !isExpanded && handleOpen(project.id)}>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="text-[15px] font-medium text-text-primary">{project.name}</div>
+                    <div className="flex gap-1">
+                      {project.environment && (
+                        <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
+                          project.environment === "Production" ? "bg-status-connected/20 text-status-connected" :
+                          project.environment === "Staging" ? "bg-status-warning/20 text-status-warning" :
+                          "bg-bg-input text-text-muted"
+                        }`}>{project.environment}</span>
+                      )}
+                      {project.is_open && <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium text-accent">Open</span>}
+                    </div>
+                  </div>
+                  {project.description && <div className={`mt-1.5 text-[12px] text-text-secondary ${isExpanded ? "" : "line-clamp-2"}`}>{project.description}</div>}
+                  {!isExpanded && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {project.platform && <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.platform}</span>}
+                      {project.ai_provider && <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.ai_provider}</span>}
+                      {project.frontend_stack && <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.frontend_stack.split(",")[0].trim()}</span>}
+                      {project.backend_stack && <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.backend_stack.split(",")[0].trim()}</span>}
+                    </div>
                   )}
-                  {project.is_open && (
-                    <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium text-accent">
-                      Open
-                    </span>
-                  )}
+                  <div className="mt-2 text-[10px] text-text-dim">Updated {new Date(project.updated_at).toLocaleDateString()}</div>
                 </div>
+                <button
+                  className="ml-2 rounded bg-bg-input px-2 py-1 text-[10px] text-text-secondary hover:text-accent"
+                  onClick={(e) => { e.stopPropagation(); setExpandedProjectId(isExpanded ? null : project.id); }}
+                >
+                  {isExpanded ? "Close" : "Info"}
+                </button>
               </div>
-              {project.description && (
-                <div className="mt-1.5 text-[12px] text-text-secondary line-clamp-2">
-                  {project.description}
+
+              {/* Expanded info */}
+              {isExpanded && (
+                <div className="border-t border-border px-5 pb-5 pt-4">
+                  {info.length > 0 && (
+                    <div className="mb-4">
+                      <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-accent">Stack & Infrastructure</div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {info.map((item) => (
+                          <div key={item.label} className="rounded border border-border bg-bg-input px-3 py-2">
+                            <div className="text-[9px] text-text-dim">{item.label}</div>
+                            <div className="mt-0.5 text-[12px] text-text-primary">{item.value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {links.length > 0 && (
+                    <div className="mb-4">
+                      <div className="mb-2 text-[10px] font-medium uppercase tracking-wider text-accent">Links</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {links.map((link) => (
+                          <div key={link.label} className="flex items-center justify-between rounded border border-border bg-bg-input px-3 py-2">
+                            <div>
+                              <div className="text-[9px] text-text-dim">{link.label}</div>
+                              <div className="mt-0.5 truncate text-[11px] text-accent">{link.url}</div>
+                            </div>
+                            <a href={link.url} target="_blank" rel="noopener noreferrer" className="ml-2 text-[10px] text-text-dim hover:text-accent" onClick={(e) => e.stopPropagation()}>Open</a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <button className="rounded bg-accent px-3 py-1.5 text-[11px] font-medium text-bg-base hover:opacity-90" onClick={() => handleOpen(project.id)}>Open Project</button>
+                    <button className="rounded bg-bg-input px-3 py-1.5 text-[11px] text-text-secondary hover:text-accent" onClick={() => setEditingProject(project)}>Edit Info</button>
+                    <button className="rounded bg-bg-input px-3 py-1.5 text-[11px] text-text-secondary hover:text-accent" onClick={async () => { await api.duplicateProject(project.id, `${project.name} (Copy)`); await loadProjects(); onProjectsChanged(); }}>Duplicate</button>
+                    <button className="rounded bg-bg-input px-3 py-1.5 text-[11px] text-status-disconnected hover:bg-status-disconnected hover:text-white" onClick={() => setDeleteConfirm(project.id)}>Delete</button>
+                  </div>
                 </div>
               )}
-              {/* Metadata chips */}
-              <div className="mt-2 flex flex-wrap gap-1">
-                {project.platform && (
-                  <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.platform}</span>
-                )}
-                {project.ai_provider && (
-                  <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.ai_provider}</span>
-                )}
-                {project.frontend_stack && (
-                  <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.frontend_stack.split(",")[0].trim()}</span>
-                )}
-                {project.backend_stack && (
-                  <span className="rounded bg-bg-input px-1.5 py-0.5 text-[9px] text-text-muted">{project.backend_stack.split(",")[0].trim()}</span>
-                )}
-              </div>
-              <div className="mt-2 text-[10px] text-text-dim">
-                Updated {new Date(project.updated_at).toLocaleDateString()}
-              </div>
-              <div className="mt-3 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                <button
-                  className="rounded bg-bg-input px-2 py-1 text-[10px] text-text-secondary hover:text-accent"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await api.duplicateProject(project.id, `${project.name} (Copy)`);
-                    await loadProjects();
-                    onProjectsChanged();
-                  }}
-                >
-                  Duplicate
-                </button>
-                <button
-                  className="rounded bg-bg-input px-2 py-1 text-[10px] text-text-secondary hover:text-accent"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleArchive(project.id);
-                  }}
-                >
-                  Archive
-                </button>
-                <button
-                  className="rounded bg-bg-input px-2 py-1 text-[10px] text-status-disconnected hover:bg-status-disconnected hover:text-white"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteConfirm(project.id);
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
+
+              {/* Hover actions — compact mode only */}
+              {!isExpanded && (
+                <div className="flex gap-2 px-5 pb-3 opacity-0 transition-opacity group-hover:opacity-100">
+                  <button className="rounded bg-bg-input px-2 py-1 text-[10px] text-text-secondary hover:text-accent" onClick={async (e) => { e.stopPropagation(); await api.duplicateProject(project.id, `${project.name} (Copy)`); await loadProjects(); onProjectsChanged(); }}>Duplicate</button>
+                  <button className="rounded bg-bg-input px-2 py-1 text-[10px] text-status-disconnected hover:bg-status-disconnected hover:text-white" onClick={(e) => { e.stopPropagation(); setDeleteConfirm(project.id); }}>Delete</button>
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Archived Projects */}
-        {archivedProjects.length > 0 && (
-          <div className="mt-8">
-            <button
-              className="mb-3 text-[12px] text-text-dim hover:text-text-secondary"
-              onClick={() => setShowArchived(!showArchived)}
-            >
-              {showArchived ? "▾" : "▸"} Archived ({archivedProjects.length})
-            </button>
-            {showArchived && (
-              <div className="grid grid-cols-3 gap-4">
-                {archivedProjects.map((project) => (
-                  <div
-                    key={project.id}
-                    className="group rounded-lg border border-border bg-bg-card/50 p-5 opacity-60 transition-opacity hover:opacity-100"
-                  >
-                    <div className="text-[15px] font-medium text-text-primary">
-                      {project.name}
-                    </div>
-                    <div className="mt-2 text-[11px] text-text-dim">
-                      Archived
-                    </div>
-                    <div className="mt-3 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                      <button
-                        className="rounded bg-bg-input px-2 py-1 text-[10px] text-accent hover:bg-accent hover:text-bg-base"
-                        onClick={() => handleOpen(project.id)}
-                      >
-                        Restore
-                      </button>
-                      <button
-                        className="rounded bg-bg-input px-2 py-1 text-[10px] text-status-disconnected hover:bg-status-disconnected hover:text-white"
-                        onClick={() => setDeleteConfirm(project.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Global Library Section */}
         <div className="mt-12 border-t border-border pt-8">
           <div className="mb-5 flex items-center justify-between">
@@ -416,6 +391,19 @@ export default function ProjectDashboard({
           })()}
         </div>
       </div>
+
+      {editingProject && (
+        <NewProjectModal
+          editProject={editingProject}
+          onCreated={() => {}}
+          onSaved={async () => {
+            setEditingProject(null);
+            await loadProjects();
+            onProjectsChanged();
+          }}
+          onClose={() => setEditingProject(null)}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={deleteConfirm !== null}

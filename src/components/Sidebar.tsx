@@ -159,7 +159,7 @@ export default function Sidebar({
         {/* Pinned/Favorites Section */}
         {favorites.length > 0 && (
           <>
-            <div className="px-4 py-1.5 text-[10px] font-medium uppercase tracking-wider text-accent">
+            <div className="px-4 py-1.5 text-[11px] font-medium uppercase tracking-wider text-accent">
               Pinned
             </div>
             {favorites.map((fav) => (
@@ -310,7 +310,7 @@ export default function Sidebar({
         )}
 
         {/* Files Section */}
-        <div className="mt-5 px-4 py-1.5 text-[10px] font-medium uppercase tracking-wider text-accent">
+        <div className="mt-5 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wider text-accent">
           Files
         </div>
         {fileFolders.length === 0 && !fileMenuOpen && (
@@ -363,7 +363,7 @@ export default function Sidebar({
         )}
 
         {/* Notes Section */}
-        <div className="mt-5 px-4 py-1.5 text-[10px] font-medium uppercase tracking-wider text-accent">
+        <div className="mt-5 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wider text-accent">
           Notes
         </div>
         {noteFolders.length === 0 && !noteMenuOpen && (
@@ -401,7 +401,7 @@ export default function Sidebar({
         {/* Project Library */}
         {projectLibraryEntries.length > 0 && (
           <>
-            <div className="mt-3 px-4 py-1 text-[9px] font-medium uppercase tracking-wider text-text-dim">
+            <div className="mt-3 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wider text-accent">
               Project Library
             </div>
             {projectLibraryEntries.map((entry) => {

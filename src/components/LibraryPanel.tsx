@@ -13,6 +13,7 @@ import { common, createLowlight } from "lowlight";
 import type { LibraryEntry } from "../types";
 import * as api from "../hooks/useTauri";
 import { LIBRARY_ICON_MAP, IconFile } from "./Icons";
+import ConfirmDialog from "./ConfirmDialog";
 import CredentialEditor from "./CredentialEditor";
 import ChecklistEditor from "./ChecklistEditor";
 import CodeSnippetEditor from "./CodeSnippetEditor";
@@ -39,6 +40,7 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [panelHeight, setPanelHeight] = useState(400);
   const isResizing = useRef(false);
 
@@ -212,25 +214,25 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
           <CredentialEditor
             entry={activeEntry}
             onSaved={loadEntries}
-            onDelete={() => { handleDelete(activeEntry.id); }}
+            onDelete={() => setDeleteConfirm(activeEntry.id)}
           />
         ) : activeEntry && activeEntry.entry_type === "Checklist" ? (
           <ChecklistEditor
             entry={activeEntry}
             onSaved={loadEntries}
-            onDelete={() => { handleDelete(activeEntry.id); }}
+            onDelete={() => setDeleteConfirm(activeEntry.id)}
           />
         ) : activeEntry && activeEntry.entry_type === "Code Snippet" ? (
           <CodeSnippetEditor
             entry={activeEntry}
             onSaved={loadEntries}
-            onDelete={() => { handleDelete(activeEntry.id); }}
+            onDelete={() => setDeleteConfirm(activeEntry.id)}
           />
         ) : activeEntry && activeEntry.entry_type === "Workflow" ? (
           <WorkflowEditor
             entry={activeEntry}
             onSaved={loadEntries}
-            onDelete={() => { handleDelete(activeEntry.id); }}
+            onDelete={() => setDeleteConfirm(activeEntry.id)}
           />
         ) : activeEntry ? (
           <LibraryEditor
@@ -241,10 +243,21 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
           <LibraryBrowse
             entries={filteredEntries}
             onSelect={setActiveEntry}
-            onDelete={handleDelete}
+            onDelete={(id: string) => setDeleteConfirm(id)}
           />
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        title="Delete Library Entry"
+        message="Are you sure? This will be moved to Trash."
+        onConfirm={() => {
+          if (deleteConfirm) handleDelete(deleteConfirm);
+          setDeleteConfirm(null);
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
 
       {/* New entry modal */}
       {showNewModal && projectId && (

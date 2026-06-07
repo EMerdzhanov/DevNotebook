@@ -26,7 +26,6 @@ import LibraryView from "./components/LibraryView";
 import JournalView from "./components/JournalView";
 import NewProjectModal from "./components/NewProjectModal";
 import GlobalSearch from "./components/GlobalSearch";
-import ProjectInfoView from "./components/ProjectInfoView";
 import CredentialEditor from "./components/CredentialEditor";
 import ChecklistEditor from "./components/ChecklistEditor";
 import CodeSnippetEditor from "./components/CodeSnippetEditor";
@@ -561,8 +560,6 @@ export default function App() {
       onCreateProject={handleCreateProject}
       onCloseProject={handleCloseProject}
       onRenameProject={handleRenameProject}
-        onOpenProjectInfo={() => setViewState(viewState?.view === "projectInfo" ? null : { view: "projectInfo" })}
-        isProjectInfoActive={viewState?.view === "projectInfo"}
         onOpenDashboard={() => setViewState(viewState?.view === "dashboard" ? null : { view: "dashboard" })}
       isDashboardActive={viewState?.view === "dashboard"}
       onOpenLibrary={() => { setLibraryAutoCreate(false); setViewState(viewState?.view === "library" ? null : { view: "library" }); }}
@@ -586,6 +583,10 @@ export default function App() {
       {/* Full-screen views */}
       {viewState?.view === "dashboard" && (
         <div className="flex-1 overflow-y-auto">
+          <button onClick={() => setViewState(null)} className="ml-6 mt-4 flex items-center gap-1.5 text-[12px] text-text-muted transition-colors hover:text-text-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+            Back
+          </button>
           <ProjectDashboard
             onOpenProject={handleOpenExistingProject}
             onProjectsChanged={reloadOpenProjects}
@@ -599,11 +600,19 @@ export default function App() {
       )}
       {viewState?.view === "library" && (
         <div className="flex-1 overflow-y-auto">
+          <button onClick={() => setViewState(null)} className="ml-6 mt-4 flex items-center gap-1.5 text-[12px] text-text-muted transition-colors hover:text-text-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+            Back
+          </button>
           <LibraryView autoCreate={libraryAutoCreate} />
         </div>
       )}
       {viewState?.view === "journal" && activeProjectId && (
         <div className="flex-1 overflow-y-auto">
+          <button onClick={() => setViewState(null)} className="ml-6 mt-4 flex items-center gap-1.5 text-[12px] text-text-muted transition-colors hover:text-text-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+            Back
+          </button>
           <JournalView
             projectId={activeProjectId}
             projectName={projects.find((p) => p.id === activeProjectId)?.name || "Project"}
@@ -612,6 +621,10 @@ export default function App() {
       )}
       {viewState?.view === "settings" && (
         <div className="flex-1 overflow-y-auto">
+          <button onClick={() => setViewState(null)} className="ml-6 mt-4 flex items-center gap-1.5 text-[12px] text-text-muted transition-colors hover:text-text-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+            Back
+          </button>
           <SettingsView
             bluetoothStatus={bluetooth.status}
             activeThemeId={activeThemeId}
@@ -631,6 +644,10 @@ export default function App() {
       )}
       {viewState?.view === "trash" && (
         <div className="flex-1 overflow-y-auto">
+          <button onClick={() => setViewState(null)} className="ml-6 mt-4 flex items-center gap-1.5 text-[12px] text-text-muted transition-colors hover:text-text-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+            Back
+          </button>
           <TrashView
             onRestored={() => {
               if (activeProjectId) loadProjectData(activeProjectId);
@@ -640,16 +657,7 @@ export default function App() {
       )}
 
       {/* Project view (sidebars + content + todo + library) */}
-      {viewState?.view === "projectInfo" && activeProjectId && (
-        <div className="flex-1 overflow-y-auto">
-          <ProjectInfoView
-            project={projects.find((p) => p.id === activeProjectId) || projects[0]}
-            onSaved={reloadOpenProjects}
-          />
-        </div>
-      )}
-
-      {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && viewState?.view !== "library" && viewState?.view !== "journal" && viewState?.view !== "projectInfo" && (
+      {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && viewState?.view !== "library" && viewState?.view !== "journal" && (
         <>
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar — spans full height including tab bar area */}
@@ -713,6 +721,17 @@ export default function App() {
             {/* Content column */}
             <div className="flex flex-1 flex-col overflow-hidden">
               {/* Content Area */}
+              {viewState && (
+                <div className="flex items-center border-b border-border bg-bg-base px-4 py-1.5">
+                  <button
+                    onClick={() => setViewState(null)}
+                    className="flex items-center gap-1.5 rounded px-2 py-1 text-[12px] text-text-muted transition-colors hover:bg-bg-input hover:text-text-primary"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                    Back
+                  </button>
+                </div>
+              )}
               {viewState?.view === "secrets" && activeCategory && (
               <SecretListView
                 categoryId={activeCategory.id}

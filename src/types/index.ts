@@ -193,7 +193,6 @@ export type ViewState =
   | { view: "dashboard" }
   | { view: "library" }
   | { view: "journal" }
-  | { view: "projectInfo" }
   | { view: "libraryEntry"; entryId: string };
 
 export type AppScreen = "loading" | "setup" | "login" | "main";

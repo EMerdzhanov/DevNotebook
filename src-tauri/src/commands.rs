@@ -238,6 +238,28 @@ pub fn rename_project(state: State<'_, AppState>, id: String, name: String) -> R
     Ok(())
 }
 
+#[tauri::command]
+pub fn update_project(state: State<'_, AppState>, id: String, input: CreateProjectInput) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+    let now = chrono::Utc::now().to_rfc3339();
+
+    conn.execute(
+        "UPDATE projects SET name=?1, description=?2, platform=?3, environment=?4, \
+         repo_url=?5, prod_url=?6, dashboard_url=?7, docs_url=?8, \
+         ai_provider=?9, ai_model=?10, agent_framework=?11, \
+         frontend_stack=?12, backend_stack=?13, database_stack=?14, \
+         updated_at=?15 WHERE id=?16",
+        params![input.name, input.description, input.platform, input.environment,
+                input.repo_url, input.prod_url, input.dashboard_url, input.docs_url,
+                input.ai_provider, input.ai_model, input.agent_framework,
+                input.frontend_stack, input.backend_stack, input.database_stack,
+                now, id],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 /// Close a project tab (hide from tab bar, keep data)
 #[tauri::command]
 pub fn close_project(state: State<'_, AppState>, id: String) -> Result<(), String> {
@@ -890,6 +912,14 @@ pub fn delete_note(state: State<'_, AppState>, id: String) -> Result<(), String>
     Ok(())
 }
 
+// ── File Reading Commands ──
+
+#[tauri::command]
+pub fn read_text_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read file: {}", e))
+}
+
 // ── Favorites Commands ──
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -1112,6 +1142,58 @@ pub fn permanently_delete_from_trash(state: State<'_, AppState>, id: String) -> 
 
     conn.execute("DELETE FROM trash WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn batch_delete_from_trash(state: State<'_, AppState>, ids: Vec<String>) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+
+    for id in &ids {
+        // Reuse project cleanup logic
+        let item = conn.query_row(
+            "SELECT item_type, item_data FROM trash WHERE id = ?1",
+            params![id],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        );
+
+        if let Ok((item_type, item_data)) = item {
+            if item_type == "project" {
+                if let Ok(data) = serde_json::from_str::<serde_json::Value>(&item_data) {
+                    let project_id = data["id"].as_str().unwrap_or("");
+                    if !project_id.is_empty() {
+                        let _ = conn.execute("DELETE FROM secrets WHERE category_id IN (SELECT id FROM secret_categories WHERE project_id = ?1)", params![project_id]);
+                        let _ = conn.execute("DELETE FROM secret_categories WHERE project_id = ?1", params![project_id]);
+                        let _ = conn.execute("DELETE FROM notes WHERE project_id = ?1", params![project_id]);
+                        let _ = conn.execute("DELETE FROM note_folders WHERE project_id = ?1", params![project_id]);
+                        if let Ok(app_data) = state.db.db_path.parent().ok_or("Invalid path") {
+                            if let Ok(mut stmt) = conn.prepare("SELECT file_path, thumbnail_path FROM files WHERE project_id = ?1") {
+                                if let Ok(paths) = stmt.query_map(params![project_id], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+                                    .map(|rows| rows.filter_map(|r| r.ok()).collect::<Vec<_>>()) {
+                                    for (fp, tp) in paths {
+                                        let _ = std::fs::remove_file(app_data.join(&fp));
+                                        if !tp.is_empty() { let _ = std::fs::remove_file(app_data.join(&tp)); }
+                                    }
+                                }
+                            }
+                        }
+                        let _ = conn.execute("DELETE FROM files WHERE project_id = ?1", params![project_id]);
+                        let _ = conn.execute("DELETE FROM file_folders WHERE project_id = ?1", params![project_id]);
+                        let _ = conn.execute("DELETE FROM todos WHERE project_id = ?1", params![project_id]);
+                        let _ = conn.execute("DELETE FROM favorites WHERE project_id = ?1", params![project_id]);
+                        let _ = conn.execute("DELETE FROM journal_entries WHERE project_id = ?1", params![project_id]);
+                        let _ = conn.execute("DELETE FROM time_sessions WHERE project_id = ?1", params![project_id]);
+                        let _ = conn.execute("DELETE FROM projects WHERE id = ?1", params![project_id]);
+                    }
+                }
+            }
+        }
+
+        conn.execute("DELETE FROM trash WHERE id = ?1", params![id])
+            .map_err(|e| e.to_string())?;
+    }
 
     Ok(())
 }

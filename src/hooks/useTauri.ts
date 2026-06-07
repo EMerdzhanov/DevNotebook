@@ -16,6 +16,8 @@ export const createProject = (input: CreateProjectInput) =>
   invoke<Project>("create_project", { input });
 export const renameProject = (id: string, name: string) =>
   invoke<void>("rename_project", { id, name });
+export const updateProject = (id: string, input: CreateProjectInput) =>
+  invoke<void>("update_project", { id, input });
 export const closeProject = (id: string) =>
   invoke<void>("close_project", { id });
 export const openProject = (id: string) =>
@@ -78,6 +80,7 @@ export const createNote = (
 export const updateNote = (id: string, title: string, content: string) =>
   invoke<void>("update_note", { id, title, content });
 export const deleteNote = (id: string) => invoke<void>("delete_note", { id });
+export const readTextFile = (path: string) => invoke<string>("read_text_file", { path });
 
 // File Folders
 export const getSuggestedFileFolders = (projectId: string) =>
@@ -145,6 +148,7 @@ export const searchLibrary = (query: string) =>
 export const getTrash = () => invoke<TrashItem[]>("get_trash");
 export const restoreFromTrash = (id: string) => invoke<string>("restore_from_trash", { id });
 export const permanentlyDeleteFromTrash = (id: string) => invoke<void>("permanently_delete_from_trash", { id });
+export const batchDeleteFromTrash = (ids: string[]) => invoke<void>("batch_delete_from_trash", { ids });
 export const emptyTrash = () => invoke<void>("empty_trash");
 
 // Journal

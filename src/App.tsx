@@ -690,6 +690,20 @@ export default function App() {
               projectLibraryEntries={projectLibraryEntries}
               activeLibraryEntryId={viewState?.view === "libraryEntry" ? viewState.entryId : null}
               onSelectLibraryEntry={(id: string) => setViewState({ view: "libraryEntry", entryId: id })}
+              onDeleteLibraryEntry={async (id: string) => {
+                try {
+                  await api.deleteLibraryEntry(id);
+                  if (activeProjectId) {
+                    const libEntries = await api.getLibraryEntries(activeProjectId);
+                    setProjectLibraryEntries(libEntries.filter((e: LibraryEntry) => !e.is_global));
+                  }
+                  if (viewState?.view === "libraryEntry" && viewState.entryId === id) {
+                    setViewState(null);
+                  }
+                } catch (err) {
+                  console.error("Failed to delete library entry:", err);
+                }
+              }}
               width={sidebarWidth}
               onWidthChange={setSidebarWidth}
               collapsed={sidebarCollapsed}

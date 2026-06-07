@@ -147,15 +147,26 @@ body {
   background: var(--color-bg-tabbar);
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  padding: 0.8em 1em;
+  padding: 0;
   margin: 0.6em 0;
   overflow-x: auto;
   position: relative;
 }
 
+.prose-editor pre::before {
+  content: "Code";
+  display: block;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 10px;
+  font-family: -apple-system, sans-serif;
+  color: var(--color-text-muted);
+}
+
 .prose-editor pre code {
+  display: block;
   background: none;
-  padding: 0;
+  padding: 0.6em 1em;
   color: var(--color-text-primary);
 }
 

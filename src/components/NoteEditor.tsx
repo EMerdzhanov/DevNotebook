@@ -114,7 +114,7 @@ export default function NoteEditor({
       const pre = target.closest("pre") as HTMLPreElement | null;
       if (pre) {
         const rect = pre.getBoundingClientRect();
-        setCopyBtnPos({ top: rect.top + 8, right: window.innerWidth - rect.right + 8, pre });
+        setCopyBtnPos({ top: rect.top + 3, right: window.innerWidth - rect.right + 8, pre });
       }
     };
 
@@ -214,10 +214,10 @@ export default function NoteEditor({
       {/* Floating copy button for code blocks */}
       {copyBtnPos && (
         <button
-          className={`floating-code-copy fixed z-20 rounded border px-2.5 py-1 text-[11px] transition-colors ${
+          className={`floating-code-copy fixed z-20 px-2 py-0.5 text-[10px] transition-colors ${
             copyFeedback
-              ? "border-status-connected bg-status-connected/20 text-status-connected"
-              : "border-border bg-bg-input text-text-muted hover:border-accent hover:text-accent"
+              ? "text-status-connected"
+              : "text-text-dim hover:text-accent"
           }`}
           style={{ top: copyBtnPos.top, right: copyBtnPos.right }}
           onClick={() => {

@@ -30,6 +30,7 @@ interface SidebarProps {
   projectLibraryEntries: LibraryEntry[];
   activeLibraryEntryId: string | null;
   onSelectLibraryEntry: (id: string) => void;
+  onDeleteLibraryEntry: (id: string) => void;
   width: number;
   onWidthChange: (width: number) => void;
   collapsed: boolean;
@@ -63,6 +64,7 @@ export default function Sidebar({
   projectLibraryEntries,
   activeLibraryEntryId,
   onSelectLibraryEntry,
+  onDeleteLibraryEntry,
   width: sidebarWidth,
   onWidthChange: setSidebarWidth,
   collapsed,
@@ -413,6 +415,15 @@ export default function Sidebar({
                       : "border-l-2 border-transparent text-text-secondary hover:text-text-primary"
                   }`}
                   onClick={() => onSelectLibraryEntry(entry.id)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setCtxMenu({
+                      x: e.clientX, y: e.clientY,
+                      items: [
+                        { label: "Delete", danger: true, action: () => onDeleteLibraryEntry(entry.id) },
+                      ],
+                    });
+                  }}
                 >
                   <span className="text-accent"><Icon size={12} /></span>
                   <span className="truncate">{entry.title}</span>

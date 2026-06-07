@@ -20,7 +20,6 @@ interface SidebarProps {
   onAddNoteFolder: (name: string) => void;
   onAddFileFolder: (name: string) => void;
   favorites: Favorite[];
-  onQuickCopy: (categoryId: string) => void;
   onSelectFavorite: (fav: Favorite) => void;
   onDeleteCategory: (id: string) => void;
   onDeleteNoteFolder: (id: string) => void;
@@ -54,7 +53,6 @@ export default function Sidebar({
   onAddNoteFolder,
   onAddFileFolder,
   favorites,
-  onQuickCopy,
   onSelectFavorite,
   onDeleteCategory,
   onDeleteNoteFolder,
@@ -217,16 +215,6 @@ export default function Sidebar({
             }}
           >
             <span>{cat.name}</span>
-            <button
-              className="rounded px-1 py-0.5 text-[10px] text-text-dim opacity-0 transition-opacity hover:text-accent group-hover/cat:opacity-100"
-              onClick={(e) => {
-                e.stopPropagation();
-                onQuickCopy(cat.id);
-              }}
-              title="Quick copy first secret"
-            >
-              Copy
-            </button>
           </div>
         ))}
 

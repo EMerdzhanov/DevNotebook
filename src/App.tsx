@@ -381,19 +381,6 @@ export default function App() {
     setViewState({ view: "secrets", categoryId: id });
   };
 
-  const handleQuickCopy = async (categoryId: string) => {
-    try {
-      const secrets = await api.getSecrets(categoryId);
-      if (secrets.length === 0) return;
-      const value = await api.revealSecret(secrets[0].id);
-      await navigator.clipboard.writeText(value);
-      // Auto-clear after 30s
-      setTimeout(() => navigator.clipboard.writeText("").catch(() => {}), 30000);
-    } catch (err) {
-      console.error("Quick copy failed:", err);
-    }
-  };
-
   const handleSelectNoteFolder = async (id: string) => {
     setViewState({ view: "notes", noteFolderId: id });
     try {
@@ -737,7 +724,6 @@ export default function App() {
               onAddNoteFolder={handleAddNoteFolder}
               onAddFileFolder={handleAddFileFolder}
               favorites={favorites}
-              onQuickCopy={handleQuickCopy}
               onSelectFavorite={handleSelectFavorite}
               onDeleteCategory={handleDeleteCategory}
               onDeleteNoteFolder={handleDeleteNoteFolder}

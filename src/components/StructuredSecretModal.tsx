@@ -98,6 +98,10 @@ export function hasStructuredForm(categoryName: string): boolean {
   return categoryName in CATEGORY_FIELDS;
 }
 
+export function getCategoryFields(categoryName: string): FieldDef[] {
+  return CATEGORY_FIELDS[categoryName] || [];
+}
+
 export default function StructuredSecretModal({
   categoryId,
   categoryName,

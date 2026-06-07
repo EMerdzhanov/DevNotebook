@@ -37,7 +37,6 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [activeEntry, setActiveEntry] = useState<LibraryEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"all" | "project" | "global">("global");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [panelHeight, setPanelHeight] = useState(400);
@@ -99,11 +98,7 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
 
   // Compute filtered entries
   const filteredEntries = entries
-    .filter((e) => {
-      if (scopeFilter === "project" && projectId) return e.project_id === projectId;
-      if (scopeFilter === "global") return e.is_global;
-      return true;
-    })
+    .filter((e) => e.is_global)
     .filter((e) => !typeFilter || e.entry_type === typeFilter);
 
   // Collapsed bar
@@ -182,21 +177,6 @@ export default function LibraryPanel({ projectId, isOpen, onToggle }: LibraryPan
       {/* Filters */}
       {!activeEntry && (
         <div className="flex items-center gap-2 border-b border-border px-4 py-1.5">
-          {/* Scope filter */}
-          <div className="flex gap-1">
-            {(["project", "global", "all"] as const).map((scope) => (
-              <button
-                key={scope}
-                className={`rounded-full px-2.5 py-0.5 text-[10px] capitalize transition-colors ${
-                  scopeFilter === scope ? "bg-accent text-bg-base" : "bg-bg-input text-text-dim hover:text-text-secondary"
-                }`}
-                onClick={() => setScopeFilter(scope)}
-              >
-                {scope === "project" ? "This Project" : scope}
-              </button>
-            ))}
-          </div>
-          <span className="text-[10px] text-border">|</span>
           {/* Type filter */}
           <div className="flex gap-1">
             <button

@@ -32,13 +32,16 @@ function parseChecklist(content: string): ChecklistData {
 export default function ChecklistEditor({ entry, onSaved, onDelete }: ChecklistEditorProps) {
   const [data, setData] = useState<ChecklistData>(() => parseChecklist(entry.content));
   const [title, setTitle] = useState(entry.title);
+  const [editing, setEditing] = useState(!data.items.length);
   const [newItemText, setNewItemText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setData(parseChecklist(entry.content));
+    const parsed = parseChecklist(entry.content);
+    setData(parsed);
     setTitle(entry.title);
+    setEditing(!parsed.items.length);
   }, [entry.id, entry.content, entry.title]);
 
   const autoSave = useCallback(
@@ -95,18 +98,32 @@ export default function ChecklistEditor({ entry, onSaved, onDelete }: ChecklistE
           <span className="text-accent"><IconCheck size={18} /></span>
           <span className="rounded bg-bg-input px-2 py-0.5 text-[10px] text-text-muted">Checklist</span>
         </div>
-        <button className="rounded px-2 py-1 text-[11px] text-status-disconnected hover:bg-bg-input" onClick={onDelete}>Delete</button>
+        <div className="flex gap-2">
+          <button
+            className={`rounded px-3 py-1 text-[11px] transition-colors ${
+              editing ? "bg-accent text-bg-base" : "bg-bg-input text-text-secondary hover:text-accent"
+            }`}
+            onClick={() => setEditing(!editing)}
+          >
+            {editing ? "Done" : "Edit"}
+          </button>
+          <button className="rounded px-2 py-1 text-[11px] text-status-disconnected hover:bg-bg-input" onClick={onDelete}>Delete</button>
+        </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-5">
         <div className="mx-auto max-w-lg">
-          <input
-            className="mb-2 w-full border-none bg-transparent text-xl font-semibold text-text-primary outline-none placeholder:text-text-dim"
-            value={title}
-            onChange={(e) => { setTitle(e.target.value); autoSave(e.target.value, data); }}
-            placeholder="Checklist name..."
-          />
+          {editing ? (
+            <input
+              className="mb-2 w-full border-none bg-transparent text-xl font-semibold text-text-primary outline-none placeholder:text-text-dim"
+              value={title}
+              onChange={(e) => { setTitle(e.target.value); autoSave(e.target.value, data); }}
+              placeholder="Checklist name..."
+            />
+          ) : (
+            <h2 className="mb-2 text-xl font-semibold text-text-primary">{title}</h2>
+          )}
 
           {/* Progress bar */}
           {total > 0 && (
@@ -132,36 +149,46 @@ export default function ChecklistEditor({ entry, onSaved, onDelete }: ChecklistE
               >
                 {item.checked && <span className="text-[11px]">✓</span>}
               </button>
-              <input
-                className={`flex-1 border-none bg-transparent text-[14px] outline-none ${
-                  item.checked ? "text-text-dim line-through" : "text-text-primary"
-                }`}
-                value={item.text}
-                onChange={(e) => updateItemText(item.id, e.target.value)}
-              />
-              <button
-                className="text-[11px] text-text-dim opacity-0 hover:text-status-disconnected group-hover:opacity-100"
-                onClick={() => removeItem(item.id)}
-              >
-                ×
-              </button>
+              {editing ? (
+                <input
+                  className={`flex-1 border-none bg-transparent text-[14px] outline-none ${
+                    item.checked ? "text-text-dim line-through" : "text-text-primary"
+                  }`}
+                  value={item.text}
+                  onChange={(e) => updateItemText(item.id, e.target.value)}
+                />
+              ) : (
+                <span className={`flex-1 text-[14px] ${item.checked ? "text-text-dim line-through" : "text-text-primary"}`}>
+                  {item.text}
+                </span>
+              )}
+              {editing && (
+                <button
+                  className="text-[11px] text-text-dim opacity-0 hover:text-status-disconnected group-hover:opacity-100"
+                  onClick={() => removeItem(item.id)}
+                >
+                  ×
+                </button>
+              )}
             </div>
           ))}
 
-          {/* Add item */}
-          <div className="mt-2 flex items-center gap-3 px-2">
-            <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border border-dashed border-text-dim">
-              <span className="text-[10px] text-text-dim">+</span>
+          {/* Add item — only in edit mode */}
+          {editing && (
+            <div className="mt-2 flex items-center gap-3 px-2">
+              <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border border-dashed border-text-dim">
+                <span className="text-[10px] text-text-dim">+</span>
+              </div>
+              <input
+                ref={inputRef}
+                className="flex-1 border-none bg-transparent text-[14px] text-text-primary outline-none placeholder:text-text-dim"
+                value={newItemText}
+                onChange={(e) => setNewItemText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addItem(); }}
+                placeholder="Add item..."
+              />
             </div>
-            <input
-              ref={inputRef}
-              className="flex-1 border-none bg-transparent text-[14px] text-text-primary outline-none placeholder:text-text-dim"
-              value={newItemText}
-              onChange={(e) => setNewItemText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") addItem(); }}
-              placeholder="Add item..."
-            />
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -14,6 +14,8 @@ interface TabBarProps {
   isLibraryActive: boolean;
   onOpenJournal: () => void;
   isJournalActive: boolean;
+  onOpenCredentials: () => void;
+  isCredentialsActive: boolean;
   onOpenSettings: () => void;
   isSettingsActive: boolean;
   onOpenTrash: () => void;
@@ -34,6 +36,8 @@ export default function TabBar({
   isLibraryActive,
   onOpenJournal,
   isJournalActive,
+  onOpenCredentials,
+  isCredentialsActive,
   onOpenSettings,
   isSettingsActive,
   onOpenTrash,
@@ -164,6 +168,18 @@ export default function TabBar({
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 20h9" />
           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+        </svg>
+      </button>
+      <button
+        className={`flex items-center justify-center px-2 py-1.5 transition-colors ${
+          isCredentialsActive ? "text-accent" : "text-text-dim hover:text-text-secondary"
+        }`}
+        onClick={onOpenCredentials}
+        title="Credentials"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
       </button>
       <button

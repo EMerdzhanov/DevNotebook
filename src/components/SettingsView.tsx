@@ -9,6 +9,7 @@ interface PairingInfo {
 interface PairedDevice {
   name: string;
   address: string;
+  ip: string;
 }
 
 interface SettingsViewProps {
@@ -19,8 +20,8 @@ interface SettingsViewProps {
   sensitivity: number;
   onThemeChange: (id: string) => void;
   onStartPairing: () => Promise<PairingInfo>;
-  onCheckPairingConfirmed: () => Promise<boolean>;
-  onCompletePairing: (name: string, address: string) => Promise<void>;
+  onCheckPairingConfirmed: () => Promise<PairedDevice | null>;
+  onCompletePairing: (device: PairedDevice) => Promise<void>;
   onCancelPairing: () => Promise<void>;
   onUnpairDevice: () => Promise<void>;
   onUpdateSensitivity: (threshold: number) => Promise<void>;
@@ -43,27 +44,28 @@ export default function SettingsView({
   onLockVault,
 }: SettingsViewProps) {
   const [pairingError, setPairingError] = useState<string | null>(null);
-  const [waitingForConfirm, setWaitingForConfirm] = useState(false);
-  const [deviceName, setDeviceName] = useState("");
-  const [deviceAddress, setDeviceAddress] = useState("");
-  const [showManualEntry, setShowManualEntry] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Poll for pairing confirmation — auto-completes when phone taps "Pair"
   useEffect(() => {
-    if (!pairing || waitingForConfirm) return;
+    if (!pairing) return;
 
     pollRef.current = setInterval(async () => {
-      const confirmed = await onCheckPairingConfirmed();
-      if (confirmed) {
-        setWaitingForConfirm(true);
+      const device = await onCheckPairingConfirmed();
+      if (device) {
         if (pollRef.current) clearInterval(pollRef.current);
+        try {
+          await onCompletePairing(device);
+        } catch (err) {
+          setPairingError(String(err));
+        }
       }
     }, 2000);
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [pairing, waitingForConfirm, onCheckPairingConfirmed]);
+  }, [pairing, onCheckPairingConfirmed, onCompletePairing]);
 
   const handleStartPairing = async () => {
     setPairingError(null);
@@ -74,32 +76,15 @@ export default function SettingsView({
     }
   };
 
-  const handleCompletePairing = async () => {
-    if (!deviceName.trim() || !deviceAddress.trim()) return;
-    try {
-      await onCompletePairing(deviceName.trim(), deviceAddress.trim());
-      setWaitingForConfirm(false);
-      setDeviceName("");
-      setDeviceAddress("");
-      setShowManualEntry(false);
-    } catch (err) {
-      setPairingError(String(err));
-    }
-  };
-
   const handleCancel = async () => {
     await onCancelPairing();
-    setWaitingForConfirm(false);
-    setDeviceName("");
-    setDeviceAddress("");
-    setShowManualEntry(false);
   };
 
-  const sensitivityLabel = (val: number) => {
-    if (val >= -60) return "Tight (~6ft)";
-    if (val >= -70) return "Close (~10ft)";
-    if (val >= -80) return "Medium (~20ft)";
-    return "Loose (~30ft)";
+  const delayLabel = (val: number) => {
+    if (val <= 10) return "Fast (10s)";
+    if (val <= 15) return "Normal (15s)";
+    if (val <= 30) return "Relaxed (30s)";
+    return "Slow (60s)";
   };
 
   return (
@@ -157,10 +142,10 @@ export default function SettingsView({
         </div>
       </div>
 
-      {/* Bluetooth Proximity Lock Section */}
+      {/* Proximity Lock Section */}
       <div className="mb-8">
         <h4 className="mb-3 text-[13px] font-medium uppercase tracking-wider text-accent">
-          Bluetooth Proximity Lock
+          Proximity Lock
         </h4>
         <div className="rounded-md border border-border bg-bg-card p-4">
           {pairedDevice ? (
@@ -169,7 +154,7 @@ export default function SettingsView({
                 <div>
                   <div className="text-[14px] text-text-primary">{pairedDevice.name}</div>
                   <div className="mt-1 text-[12px] text-text-muted">
-                    Status: {bluetoothStatus} — {pairedDevice.address}
+                    Status: {bluetoothStatus}
                   </div>
                 </div>
                 <button
@@ -182,88 +167,43 @@ export default function SettingsView({
 
               <div className="mt-4 border-t border-border pt-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-[13px] text-text-primary">Lock Sensitivity</div>
-                  <div className="text-[12px] text-accent">{sensitivityLabel(sensitivity)}</div>
+                  <div className="text-[13px] text-text-primary">Lock Delay</div>
+                  <div className="text-[12px] text-accent">{delayLabel(sensitivity)}</div>
                 </div>
                 <input
                   type="range"
-                  min={-90}
-                  max={-55}
+                  min={10}
+                  max={60}
                   step={5}
                   value={sensitivity}
                   onChange={(e) => onUpdateSensitivity(Number(e.target.value))}
                   className="mt-2 w-full accent-accent"
                 />
                 <div className="mt-1 flex justify-between text-[10px] text-text-dim">
-                  <span>Loose (~30ft)</span>
-                  <span>Tight (~6ft)</span>
+                  <span>Fast (10s)</span>
+                  <span>Slow (60s)</span>
                 </div>
               </div>
             </>
           ) : pairing ? (
-            <>
-              {!waitingForConfirm ? (
-                <div className="text-center">
-                  <div className="text-[14px] text-text-primary mb-3">
-                    Scan this QR code with your phone
-                  </div>
-                  <div
-                    className="mx-auto mb-3 inline-block rounded-lg bg-bg-base p-3"
-                    dangerouslySetInnerHTML={{ __html: pairing.qr_svg }}
-                  />
-                  <div className="text-[11px] text-text-dim mb-4">
-                    Opens a page to guide you through Bluetooth pairing
-                  </div>
-                  <button
-                    className="rounded bg-bg-input px-4 py-2 text-[12px] text-text-muted hover:text-text-primary"
-                    onClick={handleCancel}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <div className="text-[14px] text-text-primary mb-2">
-                    Phone connected! Now enter your device details:
-                  </div>
-                  <div className="text-[11px] text-text-dim mb-3">
-                    Find the Bluetooth name and address in your phone's Bluetooth settings,
-                    or on your computer under System Settings → Bluetooth → paired devices.
-                  </div>
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      placeholder="Device name (e.g. John's iPhone)"
-                      value={deviceName}
-                      onChange={(e) => setDeviceName(e.target.value)}
-                      className="w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary placeholder:text-text-dim focus:border-accent focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Bluetooth address (e.g. AA-BB-CC-DD-EE-FF)"
-                      value={deviceAddress}
-                      onChange={(e) => setDeviceAddress(e.target.value)}
-                      className="w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary placeholder:text-text-dim focus:border-accent focus:outline-none"
-                    />
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      className="rounded border border-accent bg-bg-input px-4 py-2 text-[13px] text-accent hover:bg-accent hover:text-bg-base disabled:opacity-50"
-                      onClick={handleCompletePairing}
-                      disabled={!deviceName.trim() || !deviceAddress.trim()}
-                    >
-                      Complete Pairing
-                    </button>
-                    <button
-                      className="rounded bg-bg-input px-4 py-2 text-[12px] text-text-muted hover:text-text-primary"
-                      onClick={handleCancel}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
+            <div className="text-center">
+              <div className="text-[14px] text-text-primary mb-3">
+                Scan this QR code with your phone
+              </div>
+              <div
+                className="mx-auto mb-3 inline-block rounded-lg bg-bg-base p-3"
+                dangerouslySetInnerHTML={{ __html: pairing.qr_svg }}
+              />
+              <div className="text-[11px] text-text-dim mb-4">
+                Tap "Pair This Phone" on the page that opens — pairing completes automatically
+              </div>
+              <button
+                className="rounded bg-bg-input px-4 py-2 text-[12px] text-text-muted hover:text-text-primary"
+                onClick={handleCancel}
+              >
+                Cancel
+              </button>
+            </div>
           ) : (
             <>
               <div className="mb-3">
@@ -277,39 +217,6 @@ export default function SettingsView({
                 onClick={handleStartPairing}
               >
                 Pair Phone
-              </button>
-
-              {showManualEntry && (
-                <div className="mt-3 space-y-2">
-                  <input
-                    type="text"
-                    placeholder="Device name"
-                    value={deviceName}
-                    onChange={(e) => setDeviceName(e.target.value)}
-                    className="w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary placeholder:text-text-dim focus:border-accent focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Bluetooth address (AA-BB-CC-DD-EE-FF)"
-                    value={deviceAddress}
-                    onChange={(e) => setDeviceAddress(e.target.value)}
-                    className="w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary placeholder:text-text-dim focus:border-accent focus:outline-none"
-                  />
-                  <button
-                    className="rounded border border-accent bg-bg-input px-3 py-1.5 text-[12px] text-accent hover:bg-accent hover:text-bg-base disabled:opacity-50"
-                    onClick={handleCompletePairing}
-                    disabled={!deviceName.trim() || !deviceAddress.trim()}
-                  >
-                    Save
-                  </button>
-                </div>
-              )}
-
-              <button
-                className="mt-2 block text-[11px] text-text-dim hover:text-text-muted"
-                onClick={() => setShowManualEntry(!showManualEntry)}
-              >
-                {showManualEntry ? "Hide manual entry" : "Or enter device details manually"}
               </button>
             </>
           )}

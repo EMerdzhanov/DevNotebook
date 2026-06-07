@@ -11,6 +11,7 @@ interface PairingInfo {
 interface PairedDevice {
   name: string;
   address: string;
+  ip: string;
 }
 
 type BackendStatus = "Connected" | "Weak" | "Disconnected" | "NotConfigured";
@@ -37,7 +38,7 @@ export function useBluetooth(
   const [countdown, setCountdown] = useState<number | null>(null);
   const [pairing, setPairing] = useState<PairingInfo | null>(null);
   const [pairedDevice, setPairedDevice] = useState<PairedDevice | null>(null);
-  const [sensitivity, setSensitivity] = useState<number>(-75);
+  const [sensitivity, setSensitivity] = useState<number>(15);
 
   useEffect(() => {
     const unlisten = listen<BackendStatus>("bluetooth-status", (event) => {
@@ -87,16 +88,20 @@ export function useBluetooth(
     return info;
   }, []);
 
-  const checkPairingConfirmed = useCallback(async (): Promise<boolean> => {
-    return invoke<boolean>("bluetooth_check_pairing");
+  const checkPairingConfirmed = useCallback(async (): Promise<PairedDevice | null> => {
+    return invoke<PairedDevice | null>("bluetooth_check_pairing");
   }, []);
 
   const completePairing = useCallback(
-    async (name: string, address: string) => {
-      await invoke("bluetooth_complete_pairing", { name, address });
-      setPairedDevice({ name, address });
+    async (device: PairedDevice) => {
+      await invoke("bluetooth_complete_pairing", {
+        name: device.name,
+        address: device.address,
+        ip: device.ip,
+      });
+      setPairedDevice(device);
       setPairing(null);
-      setStatus("disconnected");
+      setStatus("connected");
     },
     [],
   );

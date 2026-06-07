@@ -191,8 +191,9 @@ export type ViewState =
   | { view: "settings" }
   | { view: "trash" }
   | { view: "dashboard" }
-  | { view: "library" }
+  | { view: "library"; focusEntryId?: string }
   | { view: "journal" }
+  | { view: "credentials" }
   | { view: "libraryEntry"; entryId: string };
 
 export type AppScreen = "loading" | "setup" | "login" | "main";

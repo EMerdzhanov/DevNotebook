@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { open as dialogOpen } from "@tauri-apps/plugin-dialog";
+import { marked } from "marked";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -189,6 +190,42 @@ export default function NoteEditor({
     }
   };
 
+  const handleImportMarkdown = async () => {
+    if (!editor) return;
+
+    try {
+      const selected = await dialogOpen({
+        multiple: false,
+        title: "Import Markdown file",
+        filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdx"] }],
+      });
+      if (!selected) return;
+
+      const path = Array.isArray(selected) ? selected[0] : selected;
+      let mdContent = await api.readTextFile(path);
+
+      // If note title is empty, adopt leading # heading from markdown
+      const currentTitle = titleValueRef.current.trim();
+      if (!currentTitle || currentTitle === "Untitled") {
+        const titleMatch = mdContent.match(/^#\s+(.+)$/m);
+        if (titleMatch) {
+          const newTitle = titleMatch[1].trim();
+          titleValueRef.current = newTitle;
+          if (titleRef.current) titleRef.current.value = newTitle;
+          // Remove the title line from content so it's not duplicated
+          mdContent = mdContent.replace(/^#\s+.+\n*/, "");
+        }
+      }
+
+      const html = await marked(mdContent);
+
+      // Insert the converted content at current cursor position
+      editor.chain().focus().insertContent(html).run();
+    } catch (err) {
+      console.error("Failed to import markdown:", err);
+    }
+  };
+
   return (
     <div className="paper-texture flex flex-1 flex-col overflow-hidden">
       {/* Toolbar */}
@@ -196,6 +233,7 @@ export default function NoteEditor({
         <EditorToolbar
           editor={editor}
           onAttach={handleAttachFile}
+          onImportMd={handleImportMarkdown}
         />
       )}
 
@@ -249,9 +287,10 @@ function parseContent(content: string): Record<string, unknown> | string {
 interface ToolbarProps {
   editor: ReturnType<typeof useEditor>;
   onAttach: () => void;
+  onImportMd: () => void;
 }
 
-function EditorToolbar({ editor, onAttach }: ToolbarProps) {
+function EditorToolbar({ editor, onAttach, onImportMd }: ToolbarProps) {
   if (!editor) return null;
 
   const btn = (
@@ -318,6 +357,14 @@ function EditorToolbar({ editor, onAttach }: ToolbarProps) {
         onMouseDown={(e) => e.preventDefault()}
       >
         Attach
+      </button>
+      <button
+        type="button"
+        className="rounded border border-accent/50 px-2 py-1 text-[11px] text-accent transition-colors hover:bg-accent/20"
+        onClick={onImportMd}
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        Import .md
       </button>
     </div>
   );

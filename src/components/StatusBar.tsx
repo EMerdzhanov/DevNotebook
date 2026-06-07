@@ -13,22 +13,22 @@ const statusConfig: Record<
   connected: {
     color: "text-status-connected",
     bgColor: "bg-status-connected",
-    label: "connected",
+    label: "nearby",
   },
   weak: {
     color: "text-status-warning",
     bgColor: "bg-status-warning",
-    label: "weak signal",
+    label: "weak",
   },
   disconnected: {
     color: "text-status-disconnected",
     bgColor: "bg-status-disconnected",
-    label: "disconnected",
+    label: "away",
   },
   "not-configured": {
     color: "text-text-muted",
     bgColor: "bg-text-muted",
-    label: "not configured",
+    label: "",
   },
 };
 
@@ -42,16 +42,20 @@ export default function StatusBar({
   return (
     <div className="flex items-center justify-between border-t border-border bg-bg-tabbar px-4 py-1.5 text-[11px]">
       <div className={`flex items-center gap-1.5 ${config.color}`}>
-        <span
-          className={`inline-block h-1.5 w-1.5 rounded-full ${config.bgColor}`}
-        />
-        <span>
-          Bluetooth: {bluetoothDevice || "Phone"} {config.label}
-        </span>
-        {lockCountdown !== null && (
-          <span className="ml-2 text-status-warning">
-            Locking in {lockCountdown}s
-          </span>
+        {bluetoothStatus !== "not-configured" && (
+          <>
+            <span
+              className={`inline-block h-1.5 w-1.5 rounded-full ${config.bgColor}`}
+            />
+            <span>
+              {bluetoothDevice || "Phone"} {config.label}
+            </span>
+            {lockCountdown !== null && (
+              <span className="ml-2 text-status-warning">
+                Locking in {lockCountdown}s
+              </span>
+            )}
+          </>
         )}
       </div>
       <div className="text-text-muted">Vault encrypted</div>

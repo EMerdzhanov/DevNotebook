@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import type { TrashItem } from "../types";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import type { TrashItem, Project } from "../types";
 import * as api from "../hooks/useTauri";
 import ConfirmDialog from "./ConfirmDialog";
 import { IconKey, IconDoc, IconFolder, IconFile, IconBuilding, IconCheck, IconBookOpen, IconNote } from "./Icons";
@@ -23,13 +23,23 @@ const TRASH_ICONS: Record<string, React.FC<{ size?: number }>> = {
 
 export default function TrashView({ onRestored }: TrashViewProps) {
   const [items, setItems] = useState<TrashItem[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false);
   const [emptyConfirm, setEmptyConfirm] = useState(false);
+
+  const projectMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) map.set(p.id, p.name);
+    return map;
+  }, [projects]);
 
   const loadTrash = useCallback(async () => {
     try {
       const data = await api.getTrash();
       setItems(data);
+      setSelected(new Set());
     } catch (err) {
       console.error("Failed to load trash:", err);
     }
@@ -37,7 +47,30 @@ export default function TrashView({ onRestored }: TrashViewProps) {
 
   useEffect(() => {
     loadTrash();
+    api.getAllProjects().then(setProjects).catch(() => {});
   }, [loadTrash]);
+
+  const getOriginLabel = (item: TrashItem) => {
+    if (!item.project_id || item.project_id === "") return "Global";
+    return projectMap.get(item.project_id) || "Unknown Project";
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === items.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(items.map((i) => i.id)));
+    }
+  };
 
   const handleRestore = async (id: string) => {
     try {
@@ -58,10 +91,20 @@ export default function TrashView({ onRestored }: TrashViewProps) {
     }
   };
 
+  const handleBatchDelete = async () => {
+    try {
+      await api.batchDeleteFromTrash(Array.from(selected));
+      await loadTrash();
+    } catch (err) {
+      console.error("Failed to batch delete:", err);
+    }
+  };
+
   const handleEmptyTrash = async () => {
     try {
       await api.emptyTrash();
       setItems([]);
+      setSelected(new Set());
     } catch (err) {
       console.error("Failed to empty trash:", err);
     }
@@ -76,14 +119,24 @@ export default function TrashView({ onRestored }: TrashViewProps) {
             {items.length} {items.length === 1 ? "item" : "items"}
           </span>
         </div>
-        {items.length > 0 && (
-          <button
-            className="rounded border border-status-disconnected/50 px-3 py-1.5 text-[12px] text-status-disconnected transition-colors hover:bg-status-disconnected hover:text-white"
-            onClick={() => setEmptyConfirm(true)}
-          >
-            Empty Trash
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button
+              className="rounded border border-status-disconnected/50 px-3 py-1.5 text-[12px] text-status-disconnected transition-colors hover:bg-status-disconnected hover:text-white"
+              onClick={() => setBatchDeleteConfirm(true)}
+            >
+              Delete Selected ({selected.size})
+            </button>
+          )}
+          {items.length > 0 && (
+            <button
+              className="rounded border border-status-disconnected/50 px-3 py-1.5 text-[12px] text-status-disconnected transition-colors hover:bg-status-disconnected hover:text-white"
+              onClick={() => setEmptyConfirm(true)}
+            >
+              Empty Trash
+            </button>
+          )}
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -107,17 +160,65 @@ export default function TrashView({ onRestored }: TrashViewProps) {
         </div>
       ) : (
         <div className="space-y-2">
+          {/* Select all row */}
+          <div className="flex items-center gap-3 px-3.5 py-1.5">
+            <button
+              onClick={toggleSelectAll}
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                selected.size === items.length && items.length > 0
+                  ? "border-accent bg-accent text-bg-base"
+                  : "border-border hover:border-text-muted"
+              }`}
+            >
+              {selected.size === items.length && items.length > 0 && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+              {selected.size > 0 && selected.size < items.length && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              )}
+            </button>
+            <span className="text-[11px] text-text-muted">
+              {selected.size > 0 ? `${selected.size} selected` : "Select all"}
+            </span>
+          </div>
+
           {items.map((item) => (
             <div
               key={item.id}
-              className="group flex items-center justify-between rounded-md border border-border bg-bg-card p-3.5"
+              className={`group flex items-center justify-between rounded-md border p-3.5 ${
+                selected.has(item.id)
+                  ? "border-accent/40 bg-accent/5"
+                  : "border-border bg-bg-card"
+              }`}
             >
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => toggleSelect(item.id)}
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    selected.has(item.id)
+                      ? "border-accent bg-accent text-bg-base"
+                      : "border-border hover:border-text-muted"
+                  }`}
+                >
+                  {selected.has(item.id) && (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </button>
                 <span className="text-accent">{(() => { const I = TRASH_ICONS[item.item_type] || IconFile; return <I size={16} />; })()}</span>
                 <div>
                   <div className="text-[13px] text-text-primary">{item.item_name}</div>
                   <div className="mt-0.5 flex items-center gap-2 text-[11px] text-text-muted">
                     <span className="capitalize">{item.item_type}</span>
+                    <span>·</span>
+                    <span className={!item.project_id || item.project_id === "" ? "text-text-dim" : "text-accent/70"}>
+                      {getOriginLabel(item)}
+                    </span>
                     <span>·</span>
                     <span>Deleted {new Date(item.deleted_at).toLocaleDateString()}</span>
                   </div>
@@ -152,6 +253,18 @@ export default function TrashView({ onRestored }: TrashViewProps) {
           setDeleteConfirm(null);
         }}
         onCancel={() => setDeleteConfirm(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={batchDeleteConfirm}
+        title="Delete Selected Items"
+        message={`This will permanently delete ${selected.size} ${selected.size === 1 ? "item" : "items"}. This cannot be undone.`}
+        confirmLabel={`Delete ${selected.size} ${selected.size === 1 ? "Item" : "Items"}`}
+        onConfirm={() => {
+          handleBatchDelete();
+          setBatchDeleteConfirm(false);
+        }}
+        onCancel={() => setBatchDeleteConfirm(false)}
       />
 
       <ConfirmDialog

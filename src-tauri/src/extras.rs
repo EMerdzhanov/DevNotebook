@@ -99,6 +99,77 @@ pub fn global_search(state: State<'_, AppState>, query: String) -> Result<Vec<Se
     Ok(results)
 }
 
+// ── All Credentials Overview ──
+
+#[derive(Serialize, Clone)]
+pub struct CredentialOverviewItem {
+    pub id: String,
+    pub name: String,
+    pub masked_preview: String,
+    pub url: String,
+    pub category_name: String,
+    pub category_id: String,
+    pub project_id: String,
+    pub project_name: String,
+    pub source: String, // "secret" or "library"
+    pub library_content: String, // for library credentials, the full JSON
+}
+
+#[tauri::command]
+pub fn get_all_credentials(state: State<'_, AppState>) -> Result<Vec<CredentialOverviewItem>, String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+    let mut results: Vec<CredentialOverviewItem> = Vec::new();
+
+    // Get all secrets from "Passwords" categories
+    if let Ok(mut stmt) = conn.prepare(
+        "SELECT s.id, s.name, s.masked_preview, s.url, sc.name, sc.id, sc.project_id, p.name \
+         FROM secrets s \
+         JOIN secret_categories sc ON s.category_id = sc.id \
+         JOIN projects p ON sc.project_id = p.id \
+         WHERE sc.name = 'Passwords' \
+         ORDER BY p.name, s.name"
+    ) {
+        if let Ok(rows) = stmt.query_map([], |row| Ok(CredentialOverviewItem {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            masked_preview: row.get(2)?,
+            url: row.get(3)?,
+            category_name: row.get(4)?,
+            category_id: row.get(5)?,
+            project_id: row.get(6)?,
+            project_name: row.get(7)?,
+            source: "secret".to_string(),
+            library_content: String::new(),
+        })) { results.extend(rows.filter_map(|r| r.ok())); }
+    }
+
+    // Get all library Credentials entries
+    if let Ok(mut stmt) = conn.prepare(
+        "SELECT le.id, le.title, le.content, le.project_id, \
+         COALESCE(p.name, 'Global') as project_name \
+         FROM library_entries le \
+         LEFT JOIN projects p ON le.project_id = p.id \
+         WHERE le.entry_type = 'Credentials' \
+         ORDER BY project_name, le.title"
+    ) {
+        if let Ok(rows) = stmt.query_map([], |row| Ok(CredentialOverviewItem {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            masked_preview: "Credential set".to_string(),
+            url: String::new(),
+            category_name: "Credentials".to_string(),
+            category_id: String::new(),
+            project_id: row.get::<_, String>(3).unwrap_or_default(),
+            project_name: row.get(4)?,
+            source: "library".to_string(),
+            library_content: row.get(2)?,
+        })) { results.extend(rows.filter_map(|r| r.ok())); }
+    }
+
+    Ok(results)
+}
+
 // ── Password Generator ──
 
 #[tauri::command]

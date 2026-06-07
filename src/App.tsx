@@ -33,6 +33,8 @@ import WorkflowEditor from "./components/WorkflowEditor";
 import LibraryEntryEditor from "./components/LibraryEntryEditor";
 import TodoPanel from "./components/TodoPanel";
 import LibraryPanel from "./components/LibraryPanel";
+import CredentialsOverview from "./components/CredentialsOverview";
+import ProjectHome from "./components/ProjectHome";
 import CommandPalette from "./components/CommandPalette";
 import KeyboardShortcuts from "./components/KeyboardShortcuts";
 import UndoToast from "./components/UndoToast";
@@ -566,6 +568,8 @@ export default function App() {
       isLibraryActive={viewState?.view === "library"}
         onOpenJournal={() => { setViewState(viewState?.view === "journal" ? null : { view: "journal" }); }}
         isJournalActive={viewState?.view === "journal"}
+      onOpenCredentials={() => setViewState(viewState?.view === "credentials" ? null : { view: "credentials" })}
+      isCredentialsActive={viewState?.view === "credentials"}
       onOpenSettings={handleOpenSettings}
       isSettingsActive={viewState?.view === "settings"}
       onOpenTrash={() => setViewState(viewState?.view === "trash" ? null : { view: "trash" })}
@@ -604,7 +608,7 @@ export default function App() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
             Back
           </button>
-          <LibraryView autoCreate={libraryAutoCreate} />
+          <LibraryView autoCreate={libraryAutoCreate} focusEntryId={viewState?.view === "library" ? viewState.focusEntryId : undefined} />
         </div>
       )}
       {viewState?.view === "journal" && activeProjectId && (
@@ -656,8 +660,63 @@ export default function App() {
         </div>
       )}
 
+      {viewState?.view === "credentials" && (
+        <div className="flex-1 overflow-y-auto">
+          <button onClick={() => setViewState(null)} className="ml-6 mt-4 flex items-center gap-1.5 text-[12px] text-text-muted transition-colors hover:text-text-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+            Back
+          </button>
+          <CredentialsOverview
+            onEditSecret={async (projectId, categoryId) => {
+              try {
+                await api.openProject(projectId);
+                const openProjects = await api.getProjects();
+                setProjects(openProjects);
+                setActiveProjectId(projectId);
+                await loadProjectData(projectId);
+                setViewState({ view: "secrets", categoryId });
+              } catch (err) {
+                console.error("Failed to open credential:", err);
+              }
+            }}
+            onEditLibraryEntry={async (projectId, entryId) => {
+              try {
+                await api.openProject(projectId);
+                const openProjects = await api.getProjects();
+                setProjects(openProjects);
+                setActiveProjectId(projectId);
+                await loadProjectData(projectId);
+                setViewState({ view: "libraryEntry", entryId });
+              } catch (err) {
+                console.error("Failed to open credential:", err);
+              }
+            }}
+            onEditGlobalLibrary={(entryId) => {
+              setLibraryAutoCreate(false);
+              setViewState({ view: "library", focusEntryId: entryId });
+            }}
+            onAddCredential={async (projectId) => {
+              try {
+                await api.openProject(projectId);
+                const openProjects = await api.getProjects();
+                setProjects(openProjects);
+                setActiveProjectId(projectId);
+                await loadProjectData(projectId);
+                const cats = await api.getSecretCategories(projectId);
+                const pwCat = cats.find((c) => c.name === "Passwords");
+                if (pwCat) {
+                  setViewState({ view: "secrets", categoryId: pwCat.id });
+                }
+              } catch (err) {
+                console.error("Failed to add credential:", err);
+              }
+            }}
+          />
+        </div>
+      )}
+
       {/* Project view (sidebars + content + todo + library) */}
-      {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && viewState?.view !== "library" && viewState?.view !== "journal" && (
+      {viewState?.view !== "settings" && viewState?.view !== "trash" && viewState?.view !== "dashboard" && viewState?.view !== "library" && viewState?.view !== "journal" && viewState?.view !== "credentials" && (
         <>
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar — spans full height including tab bar area */}
@@ -791,11 +850,25 @@ export default function App() {
               // Fallback: TipTap editor for Setup Guide, Reference, and custom types
               return <LibraryEntryEditor key={entry.id} {...props} />;
             })()}
-            {!viewState && (
-              <div className="paper-texture flex flex-1 items-center justify-center text-text-muted">
-                Select a category or note from the sidebar
-              </div>
-            )}
+            {!viewState && activeProjectId && (() => {
+              const project = projects.find((p) => p.id === activeProjectId);
+              if (!project) return null;
+              return (
+                <ProjectHome
+                  project={project}
+                  categories={categories}
+                  noteFolders={noteFolders}
+                  fileFolders={fileFolders}
+                  libraryEntries={projectLibraryEntries}
+                  onNavigate={(view, id) => {
+                    if (view === "secrets" && id) setViewState({ view: "secrets", categoryId: id });
+                    else if (view === "notes" && id) setViewState({ view: "notes", noteFolderId: id });
+                    else if (view === "files" && id) setViewState({ view: "files", folderId: id });
+                    else if (view === "libraryEntry" && id) setViewState({ view: "libraryEntry", entryId: id });
+                  }}
+                />
+              );
+            })()}
             </div>
 
             {/* Todo Panel (right sidebar) */}

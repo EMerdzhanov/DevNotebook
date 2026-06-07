@@ -179,7 +179,7 @@ export default function Sidebar({
         )}
 
         {/* Secrets Section */}
-        <div className="flex items-center justify-between border-b border-border-subtle px-4 py-2.5">
+        <div className="flex items-center justify-between border-b border-bg-sidebar px-4 py-2.5">
           <span className="text-[11px] font-medium uppercase tracking-wider text-accent">
             Secrets
           </span>
@@ -362,13 +362,13 @@ export default function Sidebar({
           />
         )}
 
-        {/* Notes Section */}
+        {/* Project Library Section */}
         <div className="mt-5 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wider text-accent">
-          Notes
+          Project Library
         </div>
-        {noteFolders.length === 0 && !noteMenuOpen && (
+        {noteFolders.length === 0 && projectLibraryEntries.length === 0 && !noteMenuOpen && (
           <div className="px-4 py-2 text-[12px] text-text-dim">
-            No categories yet
+            No items yet
           </div>
         )}
         {noteFolders.map((folder) => (
@@ -385,7 +385,7 @@ export default function Sidebar({
               setCtxMenu({
                 x: e.clientX, y: e.clientY,
                 items: [
-                  { label: "Delete", danger: true, action: () => setPendingDelete({ title: `Delete "${folder.name}" category?`, action: () => onDeleteNoteFolder(folder.id) }) },
+                  { label: "Delete", danger: true, action: () => setPendingDelete({ title: `Delete "${folder.name}"?`, action: () => onDeleteNoteFolder(folder.id) }) },
                 ],
               });
             }}
@@ -398,46 +398,38 @@ export default function Sidebar({
             )}
           </button>
         ))}
-        {/* Project Library */}
-        {projectLibraryEntries.length > 0 && (
-          <>
-            <div className="mt-3 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wider text-accent">
-              Project Library
-            </div>
-            {projectLibraryEntries.map((entry) => {
-              const Icon = LIBRARY_ENTRY_TYPES.find((t) => t.name === entry.entry_type)?.Icon || IconFile;
-              return (
-                <button
-                  key={entry.id}
-                  className={`flex w-full items-center gap-2 px-4 py-1.5 text-left text-[12px] transition-colors ${
-                    activeLibraryEntryId === entry.id
-                      ? "border-l-2 border-accent bg-bg-card text-text-primary"
-                      : "border-l-2 border-transparent text-text-secondary hover:text-text-primary"
-                  }`}
-                  onClick={() => onSelectLibraryEntry(entry.id)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setCtxMenu({
-                      x: e.clientX, y: e.clientY,
-                      items: [
-                        { label: "Delete", danger: true, action: () => onDeleteLibraryEntry(entry.id) },
-                      ],
-                    });
-                  }}
-                >
-                  <span className="text-accent"><Icon size={12} /></span>
-                  <span className="truncate">{entry.title}</span>
-                </button>
-              );
-            })}
-          </>
-        )}
+        {projectLibraryEntries.map((entry) => {
+          const Icon = LIBRARY_ENTRY_TYPES.find((t) => t.name === entry.entry_type)?.Icon || IconFile;
+          return (
+            <button
+              key={entry.id}
+              className={`flex w-full items-center gap-2 px-4 py-2 text-left text-[13px] transition-colors ${
+                activeLibraryEntryId === entry.id
+                  ? "border-l-2 border-accent bg-bg-card text-text-primary"
+                  : "border-l-2 border-transparent text-text-secondary hover:text-text-primary"
+              }`}
+              onClick={() => onSelectLibraryEntry(entry.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setCtxMenu({
+                  x: e.clientX, y: e.clientY,
+                  items: [
+                    { label: "Delete", danger: true, action: () => onDeleteLibraryEntry(entry.id) },
+                  ],
+                });
+              }}
+            >
+              <span className="text-accent"><Icon size={12} /></span>
+              <span className="truncate">{entry.title}</span>
+            </button>
+          );
+        })}
 
         <button
           className="w-full border-t border-border-subtle px-4 py-2 text-left text-[13px] text-text-dim transition-colors hover:text-accent"
           onClick={() => setNoteMenuOpen(true)}
         >
-          + Add Category
+          + Add Item
         </button>
         {noteMenuOpen && (
           <NoteFolderMenu

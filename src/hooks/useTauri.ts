@@ -179,6 +179,10 @@ export const generateTotp = (encryptedSecretB64: string) =>
 export const validateTotpSecret = (secret: string) =>
   invoke<boolean>("validate_totp_secret", { secret });
 
+// Credentials Overview
+export const getAllCredentials = () =>
+  invoke<{ id: string; name: string; masked_preview: string; url: string; category_name: string; category_id: string; project_id: string; project_name: string; source: string; library_content: string }[]>("get_all_credentials");
+
 // Global Search
 export const globalSearch = (query: string) =>
   invoke<{ id: string; item_type: string; title: string; preview: string; project_id: string; project_name: string }[]>("global_search", { query });

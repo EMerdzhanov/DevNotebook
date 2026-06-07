@@ -116,6 +116,7 @@ pub fn run() {
             commands::bluetooth_paired_device,
             commands::bluetooth_set_sensitivity,
             commands::bluetooth_get_sensitivity,
+            extras::get_all_credentials,
             extras::global_search,
             extras::generate_password,
             extras::export_vault,

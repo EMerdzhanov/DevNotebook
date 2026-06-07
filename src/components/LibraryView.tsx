@@ -28,7 +28,7 @@ function LibIcon({ type, size = 16 }: { type: string; size?: number }) {
 
 const ENTRY_TYPES = ["Credentials", "Workflow", "Setup Guide", "Code Snippet", "Reference", "Checklist"];
 
-export default function LibraryView({ autoCreate = false }: { autoCreate?: boolean }) {
+export default function LibraryView({ autoCreate = false, focusEntryId }: { autoCreate?: boolean; focusEntryId?: string | null }) {
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeEntry, setActiveEntry] = useState<LibraryEntry | null>(null);
@@ -65,6 +65,14 @@ export default function LibraryView({ autoCreate = false }: { autoCreate?: boole
     loadEntries();
     loadProjects();
   }, [loadEntries, loadProjects]);
+
+  // Auto-select a specific entry when navigated from Credentials Overview
+  useEffect(() => {
+    if (focusEntryId && entries.length > 0 && !activeEntry) {
+      const target = entries.find((e) => e.id === focusEntryId);
+      if (target) setActiveEntry(target);
+    }
+  }, [focusEntryId, entries, activeEntry]);
 
   const handleDelete = async (id: string) => {
     try {

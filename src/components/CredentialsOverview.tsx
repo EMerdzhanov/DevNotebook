@@ -19,16 +19,19 @@ interface CredentialsOverviewProps {
   onEditSecret: (projectId: string, categoryId: string) => void;
   onEditLibraryEntry: (projectId: string, entryId: string) => void;
   onEditGlobalLibrary: (entryId: string) => void;
-  onAddCredential: (projectId: string) => void;
+  onAddToProject: (projectId: string) => void;
 }
 
-export default function CredentialsOverview({ onEditSecret, onEditLibraryEntry, onEditGlobalLibrary, onAddCredential }: CredentialsOverviewProps) {
+export default function CredentialsOverview({ onEditSecret, onEditLibraryEntry, onEditGlobalLibrary, onAddToProject }: CredentialsOverviewProps) {
   const [items, setItems] = useState<CredItem[]>([]);
   const [search, setSearch] = useState("");
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [totpCodes, setTotpCodes] = useState<Record<string, { code: string; remaining: number }>>({});
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [addTitle, setAddTitle] = useState("");
+  const [addMode, setAddMode] = useState<"global" | "project">("global");
+  const [filterOpen, setFilterOpen] = useState(false);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [detailItem, setDetailItem] = useState<CredItem | null>(null);
   const [detailData, setDetailData] = useState<Record<string, string> | null>(null);
@@ -167,6 +170,19 @@ export default function CredentialsOverview({ onEditSecret, onEditLibraryEntry, 
     }
   };
 
+  const handleCreateGlobal = async () => {
+    if (!addTitle.trim()) return;
+    try {
+      const entry = await api.createLibraryEntry("", addTitle.trim(), "Credentials", true);
+      setShowAddMenu(false);
+      setAddTitle("");
+      setAddMode("global");
+      onEditGlobalLibrary(entry.id);
+    } catch (err) {
+      console.error("Failed to create credential:", err);
+    }
+  };
+
   // Get unique project names for filter
   const projectNames = [...new Set(items.map((i) => i.project_name))].sort();
 
@@ -203,16 +219,47 @@ export default function CredentialsOverview({ onEditSecret, onEditLibraryEntry, 
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search credentials..."
           />
-          <select
-            className="rounded border border-border bg-bg-input px-3 py-1.5 text-[12px] text-text-primary outline-none"
-            value={projectFilter || ""}
-            onChange={(e) => setProjectFilter(e.target.value || null)}
-          >
-            <option value="">All Projects</option>
-            {projectNames.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <button
+              className={`flex items-center gap-1.5 rounded border px-3 py-1.5 text-[12px] transition-colors ${
+                projectFilter
+                  ? "border-accent/50 bg-accent/10 text-accent"
+                  : "border-border bg-bg-input text-text-primary"
+              }`}
+              onClick={() => setFilterOpen(!filterOpen)}
+            >
+              <span>{projectFilter || "All Projects"}</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {filterOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setFilterOpen(false)} />
+                <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-lg border border-border bg-bg-base py-1 shadow-lg">
+                  <button
+                    className={`flex w-full items-center px-3 py-2 text-left text-[12px] transition-colors hover:bg-bg-input ${
+                      !projectFilter ? "text-accent" : "text-text-primary"
+                    }`}
+                    onClick={() => { setProjectFilter(null); setFilterOpen(false); }}
+                  >
+                    All Projects
+                  </button>
+                  {projectNames.map((name) => (
+                    <button
+                      key={name}
+                      className={`flex w-full items-center px-3 py-2 text-left text-[12px] transition-colors hover:bg-bg-input ${
+                        projectFilter === name ? "text-accent" : "text-text-primary"
+                      }`}
+                      onClick={() => { setProjectFilter(name); setFilterOpen(false); }}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <button
             className="rounded border border-border bg-bg-input px-3 py-1.5 text-[12px] text-accent transition-colors hover:bg-accent/10"
             onClick={() => setShowAddMenu(true)}
@@ -226,40 +273,82 @@ export default function CredentialsOverview({ onEditSecret, onEditLibraryEntry, 
       {showAddMenu && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setShowAddMenu(false)}
+          onClick={() => { setShowAddMenu(false); setAddTitle(""); setAddMode("global"); }}
         >
           <div
-            className="w-[520px] overflow-hidden rounded-lg border border-border bg-bg-base shadow-2xl"
+            className="w-[480px] overflow-hidden rounded-lg border border-border bg-bg-base shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <span className="text-[13px] font-medium text-text-primary">Add Credential to Project</span>
+              <span className="text-[13px] font-medium text-text-primary">Add Credential</span>
               <button
                 className="text-[14px] text-text-muted hover:text-text-primary"
-                onClick={() => setShowAddMenu(false)}
+                onClick={() => { setShowAddMenu(false); setAddTitle(""); setAddMode("global"); }}
               >
                 &times;
               </button>
             </div>
-            <div className="py-2">
-              {projects.length === 0 ? (
-                <div className="px-4 py-6 text-center text-[12px] text-text-dim">No projects available</div>
+            <div className="p-4">
+              {/* Mode toggle */}
+              <div className="mb-4 flex gap-1 rounded-lg border border-border bg-bg-input p-0.5">
+                <button
+                  className={`flex-1 rounded-md px-3 py-1.5 text-[12px] transition-colors ${addMode === "global" ? "bg-accent/15 text-accent" : "text-text-muted hover:text-text-primary"}`}
+                  onClick={() => setAddMode("global")}
+                >
+                  Global Credential
+                </button>
+                <button
+                  className={`flex-1 rounded-md px-3 py-1.5 text-[12px] transition-colors ${addMode === "project" ? "bg-accent/15 text-accent" : "text-text-muted hover:text-text-primary"}`}
+                  onClick={() => setAddMode("project")}
+                >
+                  Project Password
+                </button>
+              </div>
+
+              {addMode === "global" ? (
+                <>
+                  <p className="mb-3 text-[11px] text-text-dim">Create a credential in the Global Library — accessible from all projects.</p>
+                  <label className="mb-1 block text-[12px] text-text-secondary">Title</label>
+                  <input
+                    className="mb-4 w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
+                    value={addTitle}
+                    onChange={(e) => setAddTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && addTitle.trim()) handleCreateGlobal(); }}
+                    placeholder="e.g., Google, AWS, GitHub"
+                    autoFocus
+                  />
+                  <button
+                    className="w-full rounded bg-accent py-2 text-[12px] font-medium text-bg-base transition-colors hover:opacity-90 disabled:opacity-50"
+                    disabled={!addTitle.trim()}
+                    onClick={handleCreateGlobal}
+                  >
+                    Create
+                  </button>
+                </>
               ) : (
-                <div className="grid grid-cols-3 gap-2 px-3 py-2">
-                  {projects.map((p) => (
-                    <button
-                      key={p.id}
-                      className="flex items-center gap-2.5 rounded-lg border border-border bg-bg-card px-3 py-3 text-left transition-colors hover:border-accent/50 hover:bg-bg-input"
-                      onClick={() => {
-                        setShowAddMenu(false);
-                        onAddCredential(p.id);
-                      }}
-                    >
-                      <span className="text-accent"><IconFolder size={18} /></span>
-                      <span className="text-[12px] text-text-secondary">{p.name}</span>
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <p className="mb-3 text-[11px] text-text-dim">Add a password to a project's Secrets section.</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {projects.map((p) => (
+                      <button
+                        key={p.id}
+                        className="flex items-center gap-2.5 rounded-lg border border-border bg-bg-card px-3 py-3 text-left transition-colors hover:border-accent/50 hover:bg-bg-input"
+                        onClick={() => {
+                          setShowAddMenu(false);
+                          setAddTitle("");
+                          setAddMode("global");
+                          onAddToProject(p.id);
+                        }}
+                      >
+                        <span className="text-accent"><IconFolder size={18} /></span>
+                        <span className="text-[12px] text-text-secondary">{p.name}</span>
+                      </button>
+                    ))}
+                    {projects.length === 0 && (
+                      <div className="col-span-3 py-4 text-center text-[12px] text-text-dim">No projects available</div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </div>

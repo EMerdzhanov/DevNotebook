@@ -17,6 +17,7 @@ import { HorizontalRule } from "@tiptap/extension-horizontal-rule";
 import { common, createLowlight } from "lowlight";
 import { FileCard } from "./FileCardExtension";
 import * as api from "../hooks/useTauri";
+import TableGridPicker from "./TableGridPicker";
 
 const lowlight = createLowlight(common);
 
@@ -237,6 +238,44 @@ export default function NoteEditor({
   );
 }
 
+function TableButton({ editor }: { editor: ReturnType<typeof useEditor> }) {
+  const [open, setOpen] = useState(false);
+  if (!editor) return null;
+  const isActive = editor.isActive("table");
+
+  if (isActive) {
+    return (
+      <button
+        type="button"
+        className="rounded bg-accent/20 px-2 py-1 text-[11px] text-accent transition-colors"
+        onClick={() => editor.chain().focus().deleteTable().run()}
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        Table
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        className="rounded px-2 py-1 text-[11px] text-text-secondary transition-colors hover:bg-bg-input hover:text-text-primary"
+        onClick={() => setOpen(!open)}
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        Table
+      </button>
+      {open && (
+        <TableGridPicker
+          onInsert={(rows, cols) => editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 function parseContent(content: string): Record<string, unknown> | string {
   if (!content || content === "{}") return "";
   try {
@@ -312,7 +351,7 @@ function EditorToolbar({ editor, onAttach, onImportMd }: ToolbarProps) {
       {btn("Code Block", () => editor.chain().focus().toggleCodeBlock().run(), editor.isActive("codeBlock"))}
       {btn("Quote", () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}
       {btn("Divider", () => editor.chain().focus().setHorizontalRule().run())}
-      {btn("Table", () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
+      <TableButton editor={editor} />
       <span className="mx-1 border-r border-border" />
       <button
         type="button"

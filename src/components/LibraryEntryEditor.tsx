@@ -1,5 +1,6 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useCodeBlockCopy } from "../hooks/useCodeBlockCopy";
+import TableGridPicker from "./TableGridPicker";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -118,7 +119,7 @@ export default function LibraryEntryEditor({ entry, onSaved, onDelete }: Library
             {btn("Task", () => editor.chain().focus().toggleTaskList().run(), editor.isActive("taskList"))}
             <span className="mx-0.5 border-r border-border" />
             {btn("Code Block", () => editor.chain().focus().toggleCodeBlock().run(), editor.isActive("codeBlock"))}
-            {btn("Table", () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
+            <EntryTableButton editor={editor} />
           </div>
           <button className="rounded px-2 py-1 text-[11px] text-status-disconnected hover:bg-bg-input" onClick={onDelete}>Delete</button>
         </div>
@@ -152,6 +153,32 @@ export default function LibraryEntryEditor({ entry, onSaved, onDelete }: Library
         >
           {copyFeedback ? "Copied!" : "Copy"}
         </button>
+      )}
+    </div>
+  );
+}
+
+function EntryTableButton({ editor }: { editor: ReturnType<typeof useEditor> }) {
+  const [open, setOpen] = useState(false);
+  if (!editor) return null;
+  const isActive = editor.isActive("table");
+
+  if (isActive) {
+    return (
+      <button type="button" className="rounded bg-accent/20 px-2 py-1 text-[11px] text-accent transition-colors"
+        onClick={() => editor.chain().focus().deleteTable().run()} onMouseDown={(e) => e.preventDefault()}>Table</button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button type="button" className="rounded px-2 py-1 text-[11px] text-text-secondary transition-colors hover:bg-bg-input hover:text-text-primary"
+        onClick={() => setOpen(!open)} onMouseDown={(e) => e.preventDefault()}>Table</button>
+      {open && (
+        <TableGridPicker
+          onInsert={(rows, cols) => editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()}
+          onClose={() => setOpen(false)}
+        />
       )}
     </div>
   );

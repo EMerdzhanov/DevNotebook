@@ -36,9 +36,8 @@ import LibraryPanel from "./components/LibraryPanel";
 import CredentialsOverview from "./components/CredentialsOverview";
 import ProjectHome from "./components/ProjectHome";
 import CommandPalette from "./components/CommandPalette";
+import ConfirmDialog from "./components/ConfirmDialog";
 import KeyboardShortcuts from "./components/KeyboardShortcuts";
-import UndoToast from "./components/UndoToast";
-import type { UndoAction } from "./components/UndoToast";
 import { useBluetooth } from "./hooks/useBluetooth";
 import { useDragDrop } from "./hooks/useDragDrop";
 import { getSavedThemeId, getThemeById, applyTheme, saveThemeId } from "./themes";
@@ -69,6 +68,7 @@ export default function App() {
   const [availableNoteFolderTemplates, setAvailableNoteFolderTemplates] = useState<string[]>([]);
   const [currentNotes, setCurrentNotes] = useState<Note[]>([]);
   const [projectLibraryEntries, setProjectLibraryEntries] = useState<LibraryEntry[]>([]);
+  const [pendingLibDelete, setPendingLibDelete] = useState<{ title: string; action: () => void } | null>(null);
 
   const [availableTemplates, setAvailableTemplates] = useState<string[]>([]);
   const [fileFolders, setFileFolders] = useState<FileFolder[]>([]);
@@ -83,7 +83,6 @@ export default function App() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryAutoCreate, setLibraryAutoCreate] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
 
   // View state
   const [viewState, setViewState] = useState<ViewState | null>(null);
@@ -744,7 +743,7 @@ export default function App() {
               onCreateLibraryEntry={async (entryType: string) => {
                 if (!activeProjectId) return;
                 try {
-                  const entry = await api.createLibraryEntry(activeProjectId, entryType, entryType, false);
+                  const entry = await api.createLibraryEntry(activeProjectId, `Untitled ${entryType}`, entryType, false);
                   const libEntries = await api.getLibraryEntries(activeProjectId);
                   setProjectLibraryEntries(libEntries.filter((e: LibraryEntry) => !e.is_global && e.entry_type !== "Credentials"));
                   setViewState({ view: "libraryEntry", entryId: entry.id });
@@ -840,7 +839,22 @@ export default function App() {
                   setProjectLibraryEntries(libEntries.filter((e: LibraryEntry) => !e.is_global && e.entry_type !== "Credentials"));
                 }
               };
-              const props = { entry, onSaved: reloadLib, onDelete: () => {} };
+              const props = {
+                entry,
+                onSaved: reloadLib,
+                onDelete: () => {
+                  setPendingLibDelete({
+                    title: `Delete "${entry.title || entry.entry_type}"?`,
+                    action: async () => {
+                      await api.deleteLibraryEntry(entry.id);
+                      await reloadLib();
+                      if (viewState?.view === "libraryEntry" && viewState.entryId === entry.id) {
+                        setViewState(null);
+                      }
+                    },
+                  });
+                },
+              };
               if (entry.entry_type === "Credentials") return <CredentialEditor key={entry.id} {...props} />;
               if (entry.entry_type === "Checklist") return <ChecklistEditor key={entry.id} {...props} />;
               if (entry.entry_type === "Code Snippet") return <CodeSnippetEditor key={entry.id} {...props} />;
@@ -929,10 +943,17 @@ export default function App() {
         onClose={() => setShortcutsOpen(false)}
       />
 
-      {/* Undo Toast */}
-      <UndoToast
-        action={undoAction}
-        onDismiss={() => setUndoAction(null)}
+
+      {/* Library Entry Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={pendingLibDelete !== null}
+        title={pendingLibDelete?.title || "Delete"}
+        message="This will permanently delete this library entry."
+        onConfirm={() => {
+          pendingLibDelete?.action();
+          setPendingLibDelete(null);
+        }}
+        onCancel={() => setPendingLibDelete(null)}
       />
 
       {/* New Project Modal */}

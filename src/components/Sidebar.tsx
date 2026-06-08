@@ -402,7 +402,7 @@ export default function Sidebar({
                 setCtxMenu({
                   x: e.clientX, y: e.clientY,
                   items: [
-                    { label: "Delete", danger: true, action: () => onDeleteLibraryEntry(entry.id) },
+                    { label: "Delete", danger: true, action: () => setPendingDelete({ title: `Delete "${entry.title}"?`, action: () => onDeleteLibraryEntry(entry.id) }) },
                   ],
                 });
               }}

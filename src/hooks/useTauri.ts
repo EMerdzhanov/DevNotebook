@@ -22,8 +22,6 @@ export const closeProject = (id: string) =>
   invoke<void>("close_project", { id });
 export const openProject = (id: string) =>
   invoke<void>("open_project", { id });
-export const archiveProject = (id: string) =>
-  invoke<void>("archive_project", { id });
 export const deleteProject = (id: string) =>
   invoke<void>("delete_project", { id });
 
@@ -191,31 +189,14 @@ export const globalSearch = (query: string) =>
 export const generatePassword = (length: number, uppercase: boolean, lowercase: boolean, numbers: boolean, symbols: boolean) =>
   invoke<string>("generate_password", { length, uppercase, lowercase, numbers, symbols });
 
-// Export
-export const exportVault = () => invoke<string>("export_vault");
-
 // Duplicate Project
 export const duplicateProject = (sourceId: string, newName: string) =>
   invoke<string>("duplicate_project", { sourceId, newName });
-
-// Import .env
-export const parseEnvFile = (content: string) =>
-  invoke<[string, string][]>("parse_env_file", { content });
 
 // Auto-lock
 export const getAutoLockTimeout = () => invoke<number>("get_auto_lock_timeout");
 export const setAutoLockTimeout = (minutes: number) =>
   invoke<void>("set_auto_lock_timeout", { minutes });
-
-// Project Templates
-export const getProjectTemplates = () =>
-  invoke<{ id: string; name: string; description: string; platform: string; secret_categories: string[]; note_folders: string[]; file_folders: string[] }[]>("get_project_templates");
-export const createProjectFromTemplate = (templateId: string, name: string) =>
-  invoke<string>("create_project_from_template", { templateId, name });
-
-// Reorder
-export const reorderItems = (table: string, ids: string[]) =>
-  invoke<void>("reorder_items", { table, ids });
 
 // Favorites
 export const getFavorites = (projectId: string) =>
@@ -228,10 +209,5 @@ export const toggleFavorite = (
 ) => invoke<boolean>("toggle_favorite", { projectId, itemId, itemType, itemName });
 
 // Tags
-export const getAllTags = () => invoke<Tag[]>("get_all_tags");
-export const getItemTags = (itemId: string) =>
-  invoke<Tag[]>("get_item_tags", { itemId });
 export const addTagToItem = (itemId: string, itemType: string, tagName: string) =>
   invoke<Tag>("add_tag_to_item", { itemId, itemType, tagName });
-export const removeTagFromItem = (itemId: string, tagId: string) =>
-  invoke<void>("remove_tag_from_item", { itemId, tagId });

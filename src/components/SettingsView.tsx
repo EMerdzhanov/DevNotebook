@@ -1,90 +1,37 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { themes } from "../themes";
-
-interface PairingInfo {
-  qr_svg: string;
-  url: string;
-}
-
-interface PairedDevice {
-  name: string;
-  address: string;
-  ip: string;
-}
+import * as api from "../hooks/useTauri";
 
 interface SettingsViewProps {
-  bluetoothStatus: string;
   activeThemeId: string;
-  pairing: PairingInfo | null;
-  pairedDevice: PairedDevice | null;
-  sensitivity: number;
   onThemeChange: (id: string) => void;
-  onStartPairing: () => Promise<PairingInfo>;
-  onCheckPairingConfirmed: () => Promise<PairedDevice | null>;
-  onCompletePairing: (device: PairedDevice) => Promise<void>;
-  onCancelPairing: () => Promise<void>;
-  onUnpairDevice: () => Promise<void>;
-  onUpdateSensitivity: (threshold: number) => Promise<void>;
   onLockVault: () => void;
 }
 
 export default function SettingsView({
-  bluetoothStatus,
   activeThemeId,
-  pairing,
-  pairedDevice,
-  sensitivity,
   onThemeChange,
-  onStartPairing,
-  onCheckPairingConfirmed,
-  onCompletePairing,
-  onCancelPairing,
-  onUnpairDevice,
-  onUpdateSensitivity,
   onLockVault,
 }: SettingsViewProps) {
-  const [pairingError, setPairingError] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [lockTimeout, setLockTimeout] = useState(30);
 
-  // Poll for pairing confirmation — auto-completes when phone taps "Pair"
   useEffect(() => {
-    if (!pairing) return;
+    api.getAutoLockTimeout().then(setLockTimeout).catch(() => {});
+  }, []);
 
-    pollRef.current = setInterval(async () => {
-      const device = await onCheckPairingConfirmed();
-      if (device) {
-        if (pollRef.current) clearInterval(pollRef.current);
-        try {
-          await onCompletePairing(device);
-        } catch (err) {
-          setPairingError(String(err));
-        }
-      }
-    }, 2000);
-
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [pairing, onCheckPairingConfirmed, onCompletePairing]);
-
-  const handleStartPairing = async () => {
-    setPairingError(null);
+  const handleTimeoutChange = async (minutes: number) => {
+    setLockTimeout(minutes);
     try {
-      await onStartPairing();
+      await api.setAutoLockTimeout(minutes);
     } catch (err) {
-      setPairingError(String(err));
+      console.error("Failed to set auto-lock timeout:", err);
     }
   };
 
-  const handleCancel = async () => {
-    await onCancelPairing();
-  };
-
-  const delayLabel = (val: number) => {
-    if (val <= 10) return "Fast (10s)";
-    if (val <= 15) return "Normal (15s)";
-    if (val <= 30) return "Relaxed (30s)";
-    return "Slow (60s)";
+  const timeoutLabel = (val: number) => {
+    if (val === 0) return "Disabled";
+    if (val === 1) return "1 minute";
+    return `${val} minutes`;
   };
 
   return (
@@ -142,112 +89,67 @@ export default function SettingsView({
         </div>
       </div>
 
-      {/* Proximity Lock Section */}
-      <div className="mb-8">
-        <h4 className="mb-3 text-[13px] font-medium uppercase tracking-wider text-accent">
-          Proximity Lock
-        </h4>
-        <div className="rounded-md border border-border bg-bg-card p-4">
-          {pairedDevice ? (
-            <>
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <div className="text-[14px] text-text-primary">{pairedDevice.name}</div>
-                  <div className="mt-1 text-[12px] text-text-muted">
-                    Status: {bluetoothStatus}
-                  </div>
-                </div>
-                <button
-                  className="rounded bg-bg-input px-3 py-1.5 text-[12px] text-status-disconnected hover:bg-status-disconnected hover:text-white"
-                  onClick={onUnpairDevice}
-                >
-                  Unpair
-                </button>
-              </div>
-
-              <div className="mt-4 border-t border-border pt-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-[13px] text-text-primary">Lock Delay</div>
-                  <div className="text-[12px] text-accent">{delayLabel(sensitivity)}</div>
-                </div>
-                <input
-                  type="range"
-                  min={10}
-                  max={60}
-                  step={5}
-                  value={sensitivity}
-                  onChange={(e) => onUpdateSensitivity(Number(e.target.value))}
-                  className="mt-2 w-full accent-accent"
-                />
-                <div className="mt-1 flex justify-between text-[10px] text-text-dim">
-                  <span>Fast (10s)</span>
-                  <span>Slow (60s)</span>
-                </div>
-              </div>
-            </>
-          ) : pairing ? (
-            <div className="text-center">
-              <div className="text-[14px] text-text-primary mb-3">
-                Scan this QR code with your phone
-              </div>
-              <div
-                className="mx-auto mb-3 inline-block rounded-lg bg-bg-base p-3"
-                dangerouslySetInnerHTML={{ __html: pairing.qr_svg }}
-              />
-              <div className="text-[11px] text-text-dim mb-4">
-                Tap "Pair This Phone" on the page that opens — pairing completes automatically
-              </div>
-              <button
-                className="rounded bg-bg-input px-4 py-2 text-[12px] text-text-muted hover:text-text-primary"
-                onClick={handleCancel}
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="mb-3">
-                <div className="text-[14px] text-text-primary">No device paired</div>
-                <div className="mt-1 text-[12px] text-text-muted">
-                  Pair your phone to auto-lock when you walk away
-                </div>
-              </div>
-              <button
-                className="rounded border border-accent bg-bg-input px-4 py-2 text-[13px] text-accent transition-colors hover:bg-accent hover:text-bg-base"
-                onClick={handleStartPairing}
-              >
-                Pair Phone
-              </button>
-            </>
-          )}
-
-          {pairingError && (
-            <div className="mt-3 rounded bg-status-disconnected/10 px-3 py-2 text-[12px] text-status-disconnected">
-              {pairingError}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Security Section */}
       <div className="mb-8">
         <h4 className="mb-3 text-[13px] font-medium uppercase tracking-wider text-accent">
           Security
         </h4>
-        <div className="rounded-md border border-border bg-bg-card p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-[14px] text-text-primary">Lock Vault</div>
-              <div className="mt-1 text-[12px] text-text-muted">
-                Lock now and require master password to re-enter
+        <div className="space-y-4">
+          {/* Lock Vault */}
+          <div className="rounded-md border border-border bg-bg-card p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[14px] text-text-primary">Lock Vault</div>
+                <div className="mt-1 text-[12px] text-text-muted">
+                  Lock now and require master password to re-enter
+                </div>
+              </div>
+              <button
+                className="rounded bg-bg-input px-4 py-2 text-[13px] text-text-secondary hover:bg-status-warning hover:text-bg-base"
+                onClick={onLockVault}
+              >
+                Lock Now
+              </button>
+            </div>
+          </div>
+
+          {/* Auto-Lock Timer */}
+          <div className="rounded-md border border-border bg-bg-card p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-[14px] text-text-primary">Auto-Lock After Inactivity</div>
+              <div className="text-[12px] text-accent">{timeoutLabel(lockTimeout)}</div>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={60}
+              step={5}
+              value={lockTimeout}
+              onChange={(e) => handleTimeoutChange(Number(e.target.value))}
+              className="mt-2 w-full accent-accent"
+            />
+            <div className="mt-1 flex justify-between text-[10px] text-text-dim">
+              <span>Off</span>
+              <span>60 min</span>
+            </div>
+            <div className="mt-2 text-[11px] text-text-dim">
+              Vault locks automatically after no mouse or keyboard activity
+            </div>
+          </div>
+
+          {/* Keyboard Shortcut Info */}
+          <div className="rounded-md border border-border bg-bg-card p-4">
+            <div className="text-[14px] text-text-primary">Keyboard Shortcuts</div>
+            <div className="mt-2 space-y-1.5">
+              <div className="flex items-center justify-between text-[12px]">
+                <span className="text-text-muted">Lock vault</span>
+                <kbd className="rounded border border-border bg-bg-input px-2 py-0.5 font-mono text-[11px] text-text-secondary">⌘L</kbd>
+              </div>
+              <div className="flex items-center justify-between text-[12px]">
+                <span className="text-text-muted">Also locks on</span>
+                <span className="text-[11px] text-text-dim">Screen lock · Sleep · Lid close</span>
               </div>
             </div>
-            <button
-              className="rounded bg-bg-input px-4 py-2 text-[13px] text-text-secondary hover:bg-status-warning hover:text-bg-base"
-              onClick={onLockVault}
-            >
-              Lock Now
-            </button>
           </div>
         </div>
       </div>

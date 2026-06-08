@@ -297,11 +297,6 @@ impl Database {
             [],
         ).map_err(|e| format!("Failed to seed settings: {}", e))?;
 
-        conn.execute(
-            "INSERT INTO settings (key, value) VALUES ('bluetooth_device', '{}')",
-            [],
-        ).map_err(|e| format!("Failed to seed settings: {}", e))?;
-
         Ok(())
     }
 }

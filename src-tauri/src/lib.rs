@@ -1,4 +1,3 @@
-mod bluetooth;
 mod commands;
 mod credentials;
 mod extras;
@@ -7,11 +6,8 @@ mod db;
 mod files;
 mod journal;
 mod library;
-mod pairing;
-mod proximity;
 mod state;
 
-use bluetooth::BluetoothMonitor;
 use db::Database;
 use state::AppState;
 use std::sync::Mutex;
@@ -41,15 +37,9 @@ pub fn run() {
             let db_path = app_data.join("vault.db");
             let database = Database::new(db_path);
 
-            let bt_monitor = BluetoothMonitor::new();
-
-            // Start Bluetooth monitoring in background
-            bt_monitor.start_monitoring(app.handle().clone());
-
             app.manage(AppState {
                 db: database,
                 encryption_key: Mutex::new(None),
-                bluetooth: bt_monitor,
             });
 
             Ok(())
@@ -107,15 +97,6 @@ pub fn run() {
             commands::add_tag_to_item,
             commands::remove_tag_from_item,
             commands::search_by_tag,
-            commands::bluetooth_start_pairing,
-            commands::bluetooth_check_pairing,
-            commands::bluetooth_complete_pairing,
-            commands::bluetooth_cancel_pairing,
-            commands::bluetooth_unpair,
-            commands::bluetooth_status,
-            commands::bluetooth_paired_device,
-            commands::bluetooth_set_sensitivity,
-            commands::bluetooth_get_sensitivity,
             extras::get_all_credentials,
             extras::global_search,
             extras::generate_password,

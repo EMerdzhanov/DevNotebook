@@ -198,5 +198,3 @@ export type ViewState =
   | { view: "libraryEntry"; entryId: string };
 
 export type AppScreen = "loading" | "setup" | "login" | "main";
-
-export type BluetoothStatus = "connected" | "weak" | "disconnected" | "not-configured";

@@ -38,7 +38,6 @@ import ProjectHome from "./components/ProjectHome";
 import CommandPalette from "./components/CommandPalette";
 import ConfirmDialog from "./components/ConfirmDialog";
 import KeyboardShortcuts from "./components/KeyboardShortcuts";
-import { useBluetooth } from "./hooks/useBluetooth";
 import { useDragDrop } from "./hooks/useDragDrop";
 import { getSavedThemeId, getThemeById, applyTheme, saveThemeId } from "./themes";
 
@@ -86,18 +85,6 @@ export default function App() {
 
   // View state
   const [viewState, setViewState] = useState<ViewState | null>(null);
-
-  // Bluetooth auto-lock
-  const handleBluetoothLock = useCallback(async () => {
-    try {
-      await api.lockVault();
-      setScreen("login");
-    } catch (err) {
-      console.error("Failed to lock vault:", err);
-    }
-  }, []);
-
-  const bluetooth = useBluetooth(handleBluetoothLock);
 
   // Global drag-and-drop
   const handleFilesDropped = useCallback(
@@ -167,6 +154,21 @@ export default function App() {
       events.forEach((e) => window.removeEventListener(e, handler));
       if (autoLockTimer) clearTimeout(autoLockTimer);
     };
+  }, [screen]);
+
+  // Lock vault on OS screen lock / sleep (visibility change)
+  useEffect(() => {
+    if (screen !== "main") return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        // Screen locked, lid closed, or app hidden — lock vault
+        api.lockVault().then(() => setScreen("login")).catch(() => {});
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [screen]);
 
   // Global keyboard shortcuts
@@ -624,18 +626,8 @@ export default function App() {
             </button>
           </div>
           <SettingsView
-            bluetoothStatus={bluetooth.status}
             activeThemeId={activeThemeId}
-            pairing={bluetooth.pairing}
-            pairedDevice={bluetooth.pairedDevice}
-            sensitivity={bluetooth.sensitivity}
             onThemeChange={handleThemeChange}
-            onStartPairing={bluetooth.startPairing}
-            onCheckPairingConfirmed={bluetooth.checkPairingConfirmed}
-            onCompletePairing={bluetooth.completePairing}
-            onCancelPairing={bluetooth.cancelPairing}
-            onUnpairDevice={bluetooth.unpairDevice}
-            onUpdateSensitivity={bluetooth.updateSensitivity}
             onLockVault={handleLockVault}
           />
         </div>
@@ -901,11 +893,7 @@ export default function App() {
       )}
 
       {/* Status Bar */}
-      <StatusBar
-        bluetoothStatus={bluetooth.status}
-        bluetoothDevice={bluetooth.pairedDevice?.name || ""}
-        lockCountdown={bluetooth.countdown}
-      />
+      <StatusBar />
 
       {/* Global Search */}
       <GlobalSearch

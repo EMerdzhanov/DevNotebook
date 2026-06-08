@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useCodeBlockCopy } from "../hooks/useCodeBlockCopy";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -321,6 +322,9 @@ function LibraryEntryEditor({
     [entry.id],
   );
 
+  // Floating copy button for code blocks
+  const { copyBtnPos, copyFeedback, handleCopy: handleCodeCopy, handleMouseLeave: handleCopyLeave } = useCodeBlockCopy(".prose-editor", [editor]);
+
   useEffect(() => {
     titleValueRef.current = entry.title;
     if (titleRef.current) titleRef.current.value = entry.title;
@@ -395,6 +399,20 @@ function LibraryEntryEditor({
         />
         <EditorContent editor={editor} />
       </div>
+
+      {/* Floating copy button for code blocks */}
+      {copyBtnPos && (
+        <button
+          className={`floating-code-copy fixed z-20 px-2 py-0.5 text-[10px] transition-colors ${
+            copyFeedback ? "text-status-connected" : "text-text-dim hover:text-accent"
+          }`}
+          style={{ top: copyBtnPos.top, right: copyBtnPos.right }}
+          onClick={handleCodeCopy}
+          onMouseLeave={handleCopyLeave}
+        >
+          {copyFeedback ? "Copied!" : "Copy"}
+        </button>
+      )}
     </>
   );
 }

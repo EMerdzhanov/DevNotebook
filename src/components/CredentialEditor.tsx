@@ -41,9 +41,7 @@ const emptyItem = (): CredentialItem => ({
 function parseStore(content: string): CredentialStore {
   try {
     const parsed = JSON.parse(content);
-    // New format: { items: [...] }
     if (Array.isArray(parsed.items)) return parsed;
-    // Old single-credential format: migrate
     if (parsed.service !== undefined || parsed.username !== undefined) {
       return { items: [{ id: newId(), ...parsed }] };
     }
@@ -54,6 +52,7 @@ function parseStore(content: string): CredentialStore {
 export default function CredentialEditor({ entry, onSaved, onDelete }: CredentialEditorProps) {
   const [store, setStore] = useState<CredentialStore>(() => parseStore(entry.content));
   const [title, setTitle] = useState(entry.title);
+  const [editing, setEditing] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -62,10 +61,15 @@ export default function CredentialEditor({ entry, onSaved, onDelete }: Credentia
     const parsed = parseStore(entry.content);
     setStore(parsed);
     setTitle(entry.title);
-    // Auto-expand if only one item
+  }, [entry.id, entry.content, entry.title]);
+
+  // Start in edit mode if empty
+  useEffect(() => {
+    const parsed = parseStore(entry.content);
+    setEditing(!parsed.items.length);
     if (parsed.items.length === 1) setExpandedId(parsed.items[0].id);
     else setExpandedId(null);
-  }, [entry.id, entry.content, entry.title]);
+  }, [entry.id]);
 
   const autoSave = useCallback(
     (newTitle: string, newStore: CredentialStore) => {
@@ -121,41 +125,67 @@ export default function CredentialEditor({ entry, onSaved, onDelete }: Credentia
           <span className="rounded bg-bg-input px-2 py-0.5 text-[10px] text-text-muted">Credentials</span>
           <span className="text-[10px] text-text-dim">{store.items.length} {store.items.length === 1 ? "account" : "accounts"}</span>
         </div>
-        <button
-          className="rounded px-2 py-1 text-[11px] text-status-disconnected hover:bg-bg-input"
-          onClick={onDelete}
-        >
-          Delete
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className={`rounded px-2.5 py-1 text-[11px] transition-colors ${editing ? "bg-accent text-bg-base hover:opacity-90" : "bg-bg-input text-text-secondary hover:text-accent"}`}
+            onClick={() => setEditing(!editing)}
+          >
+            {editing ? "Done" : "Edit"}
+          </button>
+          <button
+            className="rounded px-2 py-1 text-[11px] text-status-disconnected hover:bg-bg-input"
+            onClick={onDelete}
+          >
+            Delete
+          </button>
+        </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-5">
         <div className="mx-auto max-w-lg">
-          <input
-            className="mb-5 w-full border-none bg-transparent text-xl font-semibold text-text-primary outline-none placeholder:text-text-dim"
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder="Credential group name..."
-          />
+          {/* Title */}
+          {editing ? (
+            <input
+              className="mb-5 w-full border-none bg-transparent text-xl font-semibold text-text-primary outline-none placeholder:text-text-dim"
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              placeholder="Credential group name..."
+            />
+          ) : (
+            <h3 className="mb-5 text-xl font-semibold text-text-primary">{title || "Untitled"}</h3>
+          )}
 
           {/* Credential items */}
           {store.items.map((item) => (
-            <CredentialCard
-              key={item.id}
-              item={item}
-              isExpanded={expandedId === item.id}
-              onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
-              onUpdate={(updates) => updateItem(item.id, updates)}
-              onRemove={() => setDeleteConfirm(item.id)}
-              isSingle={store.items.length === 1}
-            />
+            editing ? (
+              <EditCredentialCard
+                key={item.id}
+                item={item}
+                isExpanded={expandedId === item.id}
+                onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                onUpdate={(updates) => updateItem(item.id, updates)}
+                onRemove={() => setDeleteConfirm(item.id)}
+                isSingle={store.items.length === 1}
+              />
+            ) : (
+              <ViewCredentialCard
+                key={item.id}
+                item={item}
+                isExpanded={expandedId === item.id}
+                onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
+              />
+            )
           ))}
+
+          {store.items.length === 0 && !editing && (
+            <div className="py-8 text-center text-[13px] text-text-dim">No credentials yet</div>
+          )}
 
           {/* Add button */}
           <button
             className="mt-3 w-full rounded border border-dashed border-accent/40 px-4 py-3 text-[13px] text-accent transition-colors hover:border-accent hover:bg-accent/5"
-            onClick={addItem}
+            onClick={() => { if (!editing) setEditing(true); addItem(); }}
           >
             + Add Credential
           </button>
@@ -174,9 +204,197 @@ export default function CredentialEditor({ entry, onSaved, onDelete }: Credentia
   );
 }
 
-// ── Credential Card ──
+// ── View Card (read-only) ──
 
-function CredentialCard({
+function ViewCredentialCard({
+  item,
+  isExpanded,
+  onToggle,
+}: {
+  item: CredentialItem;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [decryptedPassword, setDecryptedPassword] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState<string | null>(null);
+  const [totpRemaining, setTotpRemaining] = useState(30);
+
+  useEffect(() => {
+    setShowPassword(false);
+    setDecryptedPassword("");
+  }, [item.id, isExpanded]);
+
+  const refreshTotp = useCallback(async () => {
+    if (!item.totp_secret) return;
+    try {
+      const result = await api.generateTotp(item.totp_secret);
+      setTotpCode(result.code);
+      setTotpRemaining(result.remaining_seconds);
+    } catch { setTotpCode(null); }
+  }, [item.totp_secret]);
+
+  useEffect(() => {
+    if (!item.totp_secret) return;
+    refreshTotp();
+    const interval = setInterval(refreshTotp, 1000);
+    return () => clearInterval(interval);
+  }, [item.totp_secret, refreshTotp]);
+
+  const handleCopy = (value: string, key: string) => {
+    navigator.clipboard.writeText(value);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+    setTimeout(() => navigator.clipboard.writeText("").catch(() => {}), 30000);
+  };
+
+  const handleReveal = async () => {
+    if (showPassword) { setShowPassword(false); setDecryptedPassword(""); return; }
+    if (!item.encrypted_password) return;
+    const decrypted = await api.decryptCredentialField(item.encrypted_password);
+    setDecryptedPassword(decrypted);
+    setShowPassword(true);
+    setTimeout(() => { setShowPassword(false); setDecryptedPassword(""); }, 15000);
+  };
+
+  const handleCopyPassword = async () => {
+    if (!item.encrypted_password) return;
+    const decrypted = await api.decryptCredentialField(item.encrypted_password);
+    handleCopy(decrypted, "password");
+  };
+
+  const displayName = item.service || item.username || "Credential";
+  const mask = () => "\u2022".repeat(12);
+
+  return (
+    <div className="mb-2 overflow-hidden rounded-lg border border-border bg-bg-card">
+      {/* Header */}
+      <div
+        className="group flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-bg-input/50"
+        onClick={onToggle}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-accent"><IconUser size={14} /></span>
+          <div>
+            <div className="text-[13px] font-medium text-text-primary">{displayName}</div>
+            {item.username && item.service && (
+              <div className="text-[11px] text-text-muted">{item.username}</div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {item.totp_secret && totpCode && (
+            <button
+              className={`rounded bg-bg-input px-2 py-0.5 font-mono text-[11px] ${copied === "totp-header" ? "text-status-connected" : "text-accent hover:bg-accent/20"}`}
+              onClick={(e) => { e.stopPropagation(); handleCopy(totpCode, "totp-header"); }}
+              title="Copy TOTP code"
+            >
+              {totpCode.substring(0, 3)} {totpCode.substring(3)}
+            </button>
+          )}
+          {item.encrypted_password && (
+            <button
+              className={`rounded bg-bg-input px-2 py-0.5 text-[10px] ${copied === "password" ? "text-status-connected" : "text-text-muted hover:text-accent"}`}
+              onClick={(e) => { e.stopPropagation(); handleCopyPassword(); }}
+            >
+              {copied === "password" ? "Copied!" : "Copy"}
+            </button>
+          )}
+          <span className="text-[10px] text-text-dim">{isExpanded ? "▾" : "▸"}</span>
+        </div>
+      </div>
+
+      {/* Expanded view */}
+      {isExpanded && (
+        <div className="divide-y divide-border-subtle/50 border-t border-border-subtle">
+          {item.username && (
+            <div className="group flex items-center justify-between px-4 py-2.5">
+              <div>
+                <div className="text-[10px] font-medium uppercase tracking-wider text-text-dim">Username</div>
+                <div className="mt-0.5 text-[12px] text-text-primary">{item.username}</div>
+              </div>
+              <button
+                className={`rounded px-2 py-0.5 text-[10px] opacity-0 transition-opacity group-hover:opacity-100 ${copied === "username" ? "text-status-connected" : "text-text-muted hover:text-accent"}`}
+                onClick={() => handleCopy(item.username, "username")}
+              >
+                {copied === "username" ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          )}
+
+          {item.encrypted_password && (
+            <div className="group flex items-center justify-between px-4 py-2.5">
+              <div>
+                <div className="text-[10px] font-medium uppercase tracking-wider text-text-dim">Password</div>
+                <div className="mt-0.5 font-mono text-[12px] text-text-primary">
+                  {showPassword ? decryptedPassword : mask()}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <button className="rounded px-2 py-0.5 text-[10px] text-text-muted hover:text-text-primary" onClick={handleReveal}>
+                  {showPassword ? "Hide" : "Reveal"}
+                </button>
+                <button
+                  className={`rounded px-2 py-0.5 text-[10px] ${copied === "password" ? "text-status-connected" : "text-text-muted hover:text-accent"}`}
+                  onClick={handleCopyPassword}
+                >
+                  {copied === "password" ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {item.url && (
+            <div className="px-4 py-2.5">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-text-dim">URL</div>
+              <a href={item.url} target="_blank" rel="noopener noreferrer" className="mt-0.5 flex items-center gap-1.5 text-[12px] text-accent hover:underline">
+                <IconLink size={10} /> {item.url}
+              </a>
+            </div>
+          )}
+
+          {item.totp_secret && totpCode && (
+            <div className="group flex items-center justify-between px-4 py-2.5">
+              <div className="flex items-center gap-3">
+                <div className="relative flex h-9 w-9 items-center justify-center">
+                  <svg className="absolute h-9 w-9 -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="var(--color-border)" strokeWidth="2" />
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeDasharray={`${(totpRemaining / 30) * 100.5} 100.5`} strokeLinecap="round" />
+                  </svg>
+                  <span className="text-[8px] text-text-muted">{totpRemaining}s</span>
+                </div>
+                <div>
+                  <div className="text-[10px] font-medium uppercase tracking-wider text-text-dim">2FA Code</div>
+                  <span className="font-mono text-[18px] font-bold tracking-[0.15em] text-text-primary">
+                    {totpCode.substring(0, 3)} {totpCode.substring(3)}
+                  </span>
+                </div>
+              </div>
+              <button
+                className={`rounded px-2 py-0.5 text-[10px] opacity-0 transition-opacity group-hover:opacity-100 ${copied === "totp" ? "text-status-connected" : "text-text-muted hover:text-accent"}`}
+                onClick={() => handleCopy(totpCode, "totp")}
+              >
+                {copied === "totp" ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          )}
+
+          {item.notes && (
+            <div className="px-4 py-2.5">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-text-dim">Notes</div>
+              <div className="mt-0.5 whitespace-pre-wrap text-[12px] text-text-muted">{item.notes}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Edit Card ──
+
+function EditCredentialCard({
   item,
   isExpanded,
   onToggle,
@@ -200,7 +418,6 @@ function CredentialCard({
   const [totpRemaining, setTotpRemaining] = useState(30);
   const [totpValid, setTotpValid] = useState<boolean | null>(null);
 
-  // Reset reveal state on item change
   useEffect(() => {
     setShowPassword(false);
     setDecryptedPassword("");
@@ -208,7 +425,6 @@ function CredentialCard({
     setTotpCode(null);
   }, [item.id]);
 
-  // Password
   const handleSetPassword = async () => {
     if (!passwordInput.trim()) return;
     const encrypted = await api.encryptCredentialField(passwordInput);
@@ -224,14 +440,6 @@ function CredentialCard({
     setTimeout(() => { setShowPassword(false); setDecryptedPassword(""); }, 15000);
   };
 
-  const handleCopyPassword = async () => {
-    if (!item.encrypted_password) return;
-    const decrypted = await api.decryptCredentialField(item.encrypted_password);
-    await navigator.clipboard.writeText(decrypted);
-    setTimeout(() => navigator.clipboard.writeText("").catch(() => {}), 30000);
-  };
-
-  // TOTP
   const handleSetTotp = async () => {
     if (!totpInput.trim()) return;
     const valid = await api.validateTotpSecret(totpInput);
@@ -262,8 +470,8 @@ function CredentialCard({
   const displayName = item.service || item.username || "New Credential";
 
   return (
-    <div className="mb-2 rounded-lg border border-border bg-bg-card overflow-hidden">
-      {/* Collapsed header */}
+    <div className="mb-2 overflow-hidden rounded-lg border border-accent/30 bg-bg-card">
+      {/* Header */}
       <div
         className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-bg-input/50"
         onClick={onToggle}
@@ -277,30 +485,10 @@ function CredentialCard({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {item.totp_secret && totpCode && (
-            <button
-              className="rounded bg-bg-input px-2 py-0.5 font-mono text-[11px] text-accent hover:bg-accent/20"
-              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(totpCode); }}
-              title="Copy TOTP code"
-            >
-              {totpCode.substring(0, 3)} {totpCode.substring(3)}
-            </button>
-          )}
-          {item.encrypted_password && (
-            <button
-              className="rounded bg-bg-input px-2 py-0.5 text-[10px] text-text-muted hover:text-text-primary"
-              onClick={(e) => { e.stopPropagation(); handleCopyPassword(); }}
-              title="Copy password"
-            >
-              Copy
-            </button>
-          )}
-          <span className="text-[10px] text-text-dim">{isExpanded ? "▾" : "▸"}</span>
-        </div>
+        <span className="text-[10px] text-text-dim">{isExpanded ? "▾" : "▸"}</span>
       </div>
 
-      {/* Expanded details */}
+      {/* Expanded edit form */}
       {isExpanded && (
         <div className="border-t border-border-subtle px-4 py-4">
           {/* Service */}
@@ -321,15 +509,12 @@ function CredentialCard({
             <label className="mb-1 flex items-center gap-1.5 text-[11px] text-text-secondary">
               <IconUser size={11} /> Username / Email
             </label>
-            <div className="flex gap-1.5">
-              <input
-                className="flex-1 rounded border border-border bg-bg-input px-3 py-1.5 text-[13px] text-text-primary outline-none focus:border-accent"
-                value={item.username}
-                onChange={(e) => onUpdate({ username: e.target.value })}
-                placeholder="user@example.com"
-              />
-              <button className="rounded bg-bg-input px-2 py-1.5 text-[10px] text-text-muted hover:text-text-primary" onClick={() => navigator.clipboard.writeText(item.username)}>Copy</button>
-            </div>
+            <input
+              className="w-full rounded border border-border bg-bg-input px-3 py-1.5 text-[13px] text-text-primary outline-none focus:border-accent"
+              value={item.username}
+              onChange={(e) => onUpdate({ username: e.target.value })}
+              placeholder="user@example.com"
+            />
           </div>
 
           {/* Password */}
@@ -343,7 +528,6 @@ function CredentialCard({
                   {showPassword ? decryptedPassword : "••••••••••••"}
                 </span>
                 <button className="rounded px-1.5 py-0.5 text-[10px] text-text-muted hover:text-text-primary" onClick={handleRevealPassword}>{showPassword ? "Hide" : "Reveal"}</button>
-                <button className="rounded px-1.5 py-0.5 text-[10px] text-text-muted hover:text-accent" onClick={handleCopyPassword}>Copy</button>
                 <button className="rounded px-1.5 py-0.5 text-[10px] text-text-muted hover:text-status-warning" onClick={() => onUpdate({ encrypted_password: "" })}>Clear</button>
               </div>
             ) : (
@@ -366,17 +550,12 @@ function CredentialCard({
             <label className="mb-1 flex items-center gap-1.5 text-[11px] text-text-secondary">
               <IconLink size={11} /> URL
             </label>
-            <div className="flex gap-1.5">
-              <input
-                className="flex-1 rounded border border-border bg-bg-input px-3 py-1.5 text-[13px] text-text-primary outline-none focus:border-accent"
-                value={item.url}
-                onChange={(e) => onUpdate({ url: e.target.value })}
-                placeholder="https://..."
-              />
-              {item.url && (
-                <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-center rounded bg-bg-input px-2 py-1.5 text-[10px] text-accent hover:opacity-80">Open</a>
-              )}
-            </div>
+            <input
+              className="w-full rounded border border-border bg-bg-input px-3 py-1.5 text-[13px] text-text-primary outline-none focus:border-accent"
+              value={item.url}
+              onChange={(e) => onUpdate({ url: e.target.value })}
+              placeholder="https://..."
+            />
           </div>
 
           {/* TOTP */}
@@ -398,10 +577,7 @@ function CredentialCard({
                     {totpCode ? `${totpCode.substring(0, 3)} ${totpCode.substring(3)}` : "------"}
                   </span>
                 </div>
-                <div className="flex gap-1.5">
-                  <button className="rounded px-2 py-0.5 text-[10px] text-text-muted hover:text-accent" onClick={() => totpCode && navigator.clipboard.writeText(totpCode)}>Copy</button>
-                  <button className="rounded px-2 py-0.5 text-[10px] text-text-muted hover:text-status-disconnected" onClick={() => onUpdate({ totp_secret: "" })}>Remove</button>
-                </div>
+                <button className="rounded px-2 py-0.5 text-[10px] text-text-muted hover:text-status-disconnected" onClick={() => onUpdate({ totp_secret: "" })}>Remove</button>
               </div>
             ) : showTotpSetup ? (
               <div>

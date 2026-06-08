@@ -1258,6 +1258,7 @@ pub struct Todo {
     pub url: String,
     pub is_completed: bool,
     pub priority: String,
+    pub kind: String,
     pub due_date: String,
     pub sort_order: i32,
     pub completed_at: String,
@@ -1272,7 +1273,7 @@ pub fn get_todos(state: State<'_, AppState>, project_id: String) -> Result<Vec<T
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, project_id, title, description, url, is_completed, priority, due_date, sort_order, completed_at, created_at, updated_at \
+            "SELECT id, project_id, title, description, url, is_completed, priority, kind, due_date, sort_order, completed_at, created_at, updated_at \
              FROM todos WHERE project_id = ?1 ORDER BY is_completed ASC, sort_order ASC, created_at DESC"
         )
         .map_err(|e| e.to_string())?;
@@ -1287,11 +1288,12 @@ pub fn get_todos(state: State<'_, AppState>, project_id: String) -> Result<Vec<T
                 url: row.get(4)?,
                 is_completed: row.get(5)?,
                 priority: row.get(6)?,
-                due_date: row.get(7)?,
-                sort_order: row.get(8)?,
-                completed_at: row.get(9)?,
-                created_at: row.get(10)?,
-                updated_at: row.get(11)?,
+                kind: row.get(7)?,
+                due_date: row.get(8)?,
+                sort_order: row.get(9)?,
+                completed_at: row.get(10)?,
+                created_at: row.get(11)?,
+                updated_at: row.get(12)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -1309,6 +1311,7 @@ pub fn create_todo(
     description: String,
     url: String,
     priority: String,
+    kind: String,
     due_date: String,
 ) -> Result<Todo, String> {
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
@@ -1326,8 +1329,8 @@ pub fn create_todo(
         .map_err(|e| e.to_string())?;
 
     conn.execute(
-        "INSERT INTO todos (id, project_id, title, description, url, priority, due_date, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-        params![id, project_id, title, description, url, priority, due_date, max_order + 1, now, now],
+        "INSERT INTO todos (id, project_id, title, description, url, priority, kind, due_date, sort_order, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        params![id, project_id, title, description, url, priority, kind, due_date, max_order + 1, now, now],
     ).map_err(|e| e.to_string())?;
 
     Ok(Todo {
@@ -1338,6 +1341,7 @@ pub fn create_todo(
         url,
         is_completed: false,
         priority,
+        kind,
         due_date,
         sort_order: max_order + 1,
         completed_at: String::new(),

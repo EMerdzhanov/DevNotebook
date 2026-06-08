@@ -274,6 +274,10 @@ impl Database {
         for col in &["description", "platform", "environment", "repo_url", "prod_url", "dashboard_url", "docs_url", "ai_provider", "ai_model", "agent_framework", "frontend_stack", "backend_stack", "database_stack"] {
             let _ = conn.execute_batch(&format!("ALTER TABLE projects ADD COLUMN {} TEXT DEFAULT '';", col));
         }
+        // Add kind to todos (task vs bug)
+        let _ = conn.execute_batch(
+            "ALTER TABLE todos ADD COLUMN kind TEXT NOT NULL DEFAULT 'task';"
+        );
 
         Ok(())
     }

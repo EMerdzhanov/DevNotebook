@@ -29,7 +29,8 @@ export default function ProjectHome({
   const totalNotes = noteFolders.reduce((sum, f) => sum + f.note_count, 0);
   const totalFiles = fileFolders.reduce((sum, f) => sum + f.file_count, 0);
   const totalLibrary = libraryEntries.length;
-  const pendingTodos = todos.filter((t) => !t.is_completed).length;
+  const pendingBugs = todos.filter((t) => !t.is_completed && t.kind === "bug");
+  const pendingTasks = todos.filter((t) => !t.is_completed && t.kind !== "bug");
   const completedTodos = todos.filter((t) => t.is_completed).length;
 
   const stats = [
@@ -37,8 +38,9 @@ export default function ProjectHome({
     { label: "Notes", value: totalNotes, action: () => noteFolders[0] && onNavigate("notes", noteFolders[0].id) },
     { label: "Files", value: totalFiles, action: () => fileFolders[0] && onNavigate("files", fileFolders[0].id) },
     { label: "Library Items", value: totalLibrary, action: () => libraryEntries[0] && onNavigate("libraryEntry", libraryEntries[0].id) },
-    { label: "Pending Todos", value: pendingTodos, action: undefined },
-    { label: "Done Todos", value: completedTodos, action: undefined },
+    { label: "Bugs", value: pendingBugs.length, accent: "text-status-disconnected", action: undefined },
+    { label: "Pending Tasks", value: pendingTasks.length, action: undefined },
+    { label: "Done", value: completedTodos, action: undefined },
   ];
 
   const details = [
@@ -85,7 +87,7 @@ export default function ProjectHome({
             }`}
             onClick={stat.action}
           >
-            <div className="text-2xl font-semibold text-text-primary">{stat.value}</div>
+            <div className={`text-2xl font-semibold ${"accent" in stat && stat.accent ? stat.accent : "text-text-primary"}`}>{stat.value}</div>
             <div className="mt-0.5 text-[11px] text-text-muted">{stat.label}</div>
           </div>
         ))}
@@ -128,33 +130,60 @@ export default function ProjectHome({
         </div>
       )}
 
-      {/* Pending Todos */}
-      {pendingTodos > 0 && (
-        <div>
-          <h3 className="mb-3 text-[12px] font-medium uppercase tracking-wider text-text-muted">Pending Todos</h3>
+      {/* Bugs to Fix */}
+      {pendingBugs.length > 0 && (
+        <div className="mb-6">
+          <h3 className="mb-3 text-[12px] font-medium uppercase tracking-wider text-status-disconnected">Bugs to Fix</h3>
           <div className="space-y-1.5">
-            {todos
-              .filter((t) => !t.is_completed)
-              .slice(0, 5)
-              .map((todo) => (
-                <div key={todo.id} className="flex items-center gap-3 rounded border border-border bg-bg-card px-3 py-2">
-                  <span className={`text-[10px] font-medium uppercase ${
-                    todo.priority === "high" ? "text-status-disconnected" :
-                    todo.priority === "medium" ? "text-accent" : "text-text-dim"
-                  }`}>
-                    {todo.priority || "—"}
+            {pendingBugs.slice(0, 5).map((todo) => (
+              <div key={todo.id} className="flex items-center gap-3 rounded border border-status-disconnected/20 bg-bg-card px-3 py-2">
+                <span className={`text-[10px] font-medium uppercase ${
+                  todo.priority === "high" ? "text-status-disconnected" :
+                  todo.priority === "medium" ? "text-accent" : "text-text-dim"
+                }`}>
+                  {todo.priority || "—"}
+                </span>
+                <span className="text-[12px] text-text-primary">{todo.title}</span>
+                {todo.due_date && (
+                  <span className="ml-auto text-[10px] text-text-dim">
+                    Due {new Date(todo.due_date).toLocaleDateString()}
                   </span>
-                  <span className="text-[12px] text-text-primary">{todo.title}</span>
-                  {todo.due_date && (
-                    <span className="ml-auto text-[10px] text-text-dim">
-                      Due {new Date(todo.due_date).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-              ))}
-            {pendingTodos > 5 && (
+                )}
+              </div>
+            ))}
+            {pendingBugs.length > 5 && (
               <div className="text-[11px] text-text-dim">
-                +{pendingTodos - 5} more
+                +{pendingBugs.length - 5} more
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Pending Tasks */}
+      {pendingTasks.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-[12px] font-medium uppercase tracking-wider text-text-muted">Pending Tasks</h3>
+          <div className="space-y-1.5">
+            {pendingTasks.slice(0, 5).map((todo) => (
+              <div key={todo.id} className="flex items-center gap-3 rounded border border-border bg-bg-card px-3 py-2">
+                <span className={`text-[10px] font-medium uppercase ${
+                  todo.priority === "high" ? "text-status-disconnected" :
+                  todo.priority === "medium" ? "text-accent" : "text-text-dim"
+                }`}>
+                  {todo.priority || "—"}
+                </span>
+                <span className="text-[12px] text-text-primary">{todo.title}</span>
+                {todo.due_date && (
+                  <span className="ml-auto text-[10px] text-text-dim">
+                    Due {new Date(todo.due_date).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+            ))}
+            {pendingTasks.length > 5 && (
+              <div className="text-[11px] text-text-dim">
+                +{pendingTasks.length - 5} more
               </div>
             )}
           </div>

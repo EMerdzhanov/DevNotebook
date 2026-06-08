@@ -23,7 +23,7 @@ const PRIORITY_DOTS: Record<string, string> = {
 export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProps) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [panelWidth, setPanelWidth] = useState(400);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState<"task" | "bug" | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const isResizing = useRef(false);
@@ -69,10 +69,10 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
     loadTodos();
   }, [loadTodos]);
 
-  const handleAdd = async (title: string, description: string, url: string, priority: string) => {
+  const handleAdd = async (title: string, description: string, url: string, priority: string, kind: string) => {
     if (!projectId || !title.trim()) return;
     try {
-      await api.createTodo(projectId, title.trim(), description.trim(), url.trim(), priority, "");
+      await api.createTodo(projectId, title.trim(), description.trim(), url.trim(), priority, kind, "");
       await loadTodos();
     } catch (err) {
       console.error("Failed to create todo:", err);
@@ -108,6 +108,8 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
     }
   };
 
+  const pendingTasks = todos.filter((t) => !t.is_completed && t.kind !== "bug");
+  const pendingBugs = todos.filter((t) => !t.is_completed && t.kind === "bug");
   const pending = todos.filter((t) => !t.is_completed);
   const completed = todos.filter((t) => t.is_completed);
 
@@ -161,24 +163,31 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
         </button>
       </div>
 
-      {/* Add todo button */}
-      <div className="border-b border-border-subtle px-3 py-2">
+      {/* Add todo buttons */}
+      <div className="flex gap-2 border-b border-border-subtle px-3 py-2">
         <button
-          className="w-full rounded border border-accent bg-bg-input px-3 py-1.5 text-[12px] text-accent transition-colors hover:bg-accent hover:text-bg-base"
-          onClick={() => setShowAddModal(true)}
+          className="flex-1 rounded border border-accent bg-bg-input px-3 py-1.5 text-[12px] text-accent transition-colors hover:bg-accent hover:text-bg-base"
+          onClick={() => setShowAddModal("task")}
         >
-          + Add Task
+          + Task
+        </button>
+        <button
+          className="flex-1 rounded border border-status-disconnected/50 bg-bg-input px-3 py-1.5 text-[12px] text-status-disconnected transition-colors hover:bg-status-disconnected hover:text-white"
+          onClick={() => setShowAddModal("bug")}
+        >
+          + Bug
         </button>
       </div>
 
-      {/* Add task modal */}
+      {/* Add task/bug modal */}
       {showAddModal && (
         <AddTodoModal
+          kind={showAddModal}
           onAdd={async (title, desc, url, priority) => {
-            await handleAdd(title, desc, url, priority);
-            setShowAddModal(false);
+            await handleAdd(title, desc, url, priority, showAddModal);
+            setShowAddModal(null);
           }}
-          onClose={() => setShowAddModal(false)}
+          onClose={() => setShowAddModal(null)}
         />
       )}
 
@@ -190,17 +199,45 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
           </div>
         )}
 
-        {pending.map((todo) => (
-          <TodoItem
-            key={todo.id}
-            todo={todo}
-            isExpanded={expandedId === todo.id}
-            onToggleExpand={() => setExpandedId(expandedId === todo.id ? null : todo.id)}
-            onToggleComplete={() => handleToggle(todo.id)}
-            onDelete={() => handleDelete(todo.id)}
-            onUpdate={loadTodos}
-          />
-        ))}
+        {pendingBugs.length > 0 && (
+          <>
+            <div className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-status-disconnected">
+              Bugs ({pendingBugs.length})
+            </div>
+            {pendingBugs.map((todo) => (
+              <TodoItem
+                key={todo.id}
+                todo={todo}
+                isExpanded={expandedId === todo.id}
+                onToggleExpand={() => setExpandedId(expandedId === todo.id ? null : todo.id)}
+                onToggleComplete={() => handleToggle(todo.id)}
+                onDelete={() => handleDelete(todo.id)}
+                onUpdate={loadTodos}
+              />
+            ))}
+          </>
+        )}
+
+        {pendingTasks.length > 0 && (
+          <>
+            {pendingBugs.length > 0 && (
+              <div className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">
+                Tasks ({pendingTasks.length})
+              </div>
+            )}
+            {pendingTasks.map((todo) => (
+              <TodoItem
+                key={todo.id}
+                todo={todo}
+                isExpanded={expandedId === todo.id}
+                onToggleExpand={() => setExpandedId(expandedId === todo.id ? null : todo.id)}
+                onToggleComplete={() => handleToggle(todo.id)}
+                onDelete={() => handleDelete(todo.id)}
+                onUpdate={loadTodos}
+              />
+            ))}
+          </>
+        )}
 
         {completed.length > 0 && (
           <>
@@ -248,16 +285,18 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
 // ── Add Task Modal ──
 
 function AddTodoModal({
+  kind,
   onAdd,
   onClose,
 }: {
+  kind: "task" | "bug";
   onAdd: (title: string, desc: string, url: string, priority: string) => void;
   onClose: () => void;
 }) {
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [url, setUrl] = useState("");
-  const [priority, setPriority] = useState("medium");
+  const [priority, setPriority] = useState(kind === "bug" ? "high" : "medium");
 
   const handleSubmit = () => {
     if (!title.trim()) return;
@@ -268,7 +307,7 @@ function AddTodoModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div className="w-[420px] rounded-lg border border-border bg-bg-base shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <span className="text-[13px] font-medium text-text-primary">New Task</span>
+          <span className="text-[13px] font-medium text-text-primary">New {kind === "bug" ? "Bug" : "Task"}</span>
           <button className="text-[14px] text-text-muted hover:text-text-primary" onClick={onClose}>&times;</button>
         </div>
 
@@ -279,7 +318,7 @@ function AddTodoModal({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-            placeholder="What needs to be done?"
+            placeholder={kind === "bug" ? "What's broken?" : "What needs to be done?"}
             autoFocus
           />
 
@@ -324,7 +363,7 @@ function AddTodoModal({
               onClick={handleSubmit}
               disabled={!title.trim()}
             >
-              Add Task
+              Add {kind === "bug" ? "Bug" : "Task"}
             </button>
           </div>
         </div>

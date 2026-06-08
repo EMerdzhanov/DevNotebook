@@ -126,6 +126,7 @@ export interface Todo {
   url: string;
   is_completed: boolean;
   priority: string;
+  kind: string;
   due_date: string;
   sort_order: number;
   completed_at: string;

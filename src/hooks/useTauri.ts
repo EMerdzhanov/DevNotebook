@@ -117,8 +117,8 @@ export const shareFile = (fileId: string) =>
 // Todos
 export const getTodos = (projectId: string) =>
   invoke<Todo[]>("get_todos", { projectId });
-export const createTodo = (projectId: string, title: string, description: string, url: string, priority: string, dueDate: string) =>
-  invoke<Todo>("create_todo", { projectId, title, description, url, priority, dueDate });
+export const createTodo = (projectId: string, title: string, description: string, url: string, priority: string, kind: string, dueDate: string) =>
+  invoke<Todo>("create_todo", { projectId, title, description, url, priority, kind, dueDate });
 export const toggleTodo = (id: string) =>
   invoke<boolean>("toggle_todo", { id });
 export const updateTodo = (id: string, title: string, description: string, url: string, priority: string, dueDate: string) =>

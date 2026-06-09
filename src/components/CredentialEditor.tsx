@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { LibraryEntry } from "../types";
 import * as api from "../hooks/useTauri";
+import { exportAsJson } from "../utils/exportItem";
 import { IconLock, IconLink, IconUser, IconShield } from "./Icons";
 import ConfirmDialog from "./ConfirmDialog";
 
@@ -111,6 +112,20 @@ export default function CredentialEditor({ entry, onSaved, onDelete }: Credentia
     autoSave(title, newStore);
   };
 
+  const handleExport = async () => {
+    const exportData = {
+      _note: "Passwords and TOTP secrets are excluded for security. Only metadata is exported.",
+      title,
+      credentials: store.items.map((item) => ({
+        service: item.service,
+        username: item.username,
+        url: item.url,
+        notes: item.notes,
+      })),
+    };
+    await exportAsJson(title, exportData);
+  };
+
   const handleTitleChange = (value: string) => {
     setTitle(value);
     autoSave(value, store);
@@ -126,6 +141,12 @@ export default function CredentialEditor({ entry, onSaved, onDelete }: Credentia
           <span className="text-[10px] text-text-dim">{store.items.length} {store.items.length === 1 ? "account" : "accounts"}</span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            className="rounded px-2 py-1 text-[11px] text-text-secondary hover:text-accent"
+            onClick={handleExport}
+          >
+            Export
+          </button>
           <button
             className={`rounded px-2.5 py-1 text-[11px] transition-colors ${editing ? "bg-accent text-bg-base hover:opacity-90" : "bg-bg-input text-text-secondary hover:text-accent"}`}
             onClick={() => setEditing(!editing)}

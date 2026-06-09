@@ -740,6 +740,17 @@ export default function App() {
               favorites={favorites}
               onSelectFavorite={handleSelectFavorite}
               onDeleteCategory={handleDeleteCategory}
+              onRenameNoteFolder={async (id, name) => {
+                try {
+                  await api.renameNoteFolder(id, name);
+                  if (activeProjectId) {
+                    const folders = await api.getNoteFolders(activeProjectId);
+                    setNoteFolders(folders);
+                  }
+                } catch (err) {
+                  console.error("Failed to rename folder:", err);
+                }
+              }}
               onDeleteNoteFolder={handleDeleteNoteFolder}
               onDeleteFileFolder={handleDeleteFileFolder}
               onToggleFavorite={handleToggleFavorite}

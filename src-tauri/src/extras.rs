@@ -284,6 +284,14 @@ pub fn export_vault(state: State<'_, AppState>) -> Result<String, String> {
     serde_json::to_string_pretty(&export).map_err(|e| e.to_string())
 }
 
+// ── Export Vault to File ──
+
+#[tauri::command]
+pub fn export_vault_to_file(state: State<'_, AppState>, path: String) -> Result<(), String> {
+    let json = export_vault(state)?;
+    std::fs::write(&path, json).map_err(|e| e.to_string())
+}
+
 // ── Duplicate Project ──
 
 #[tauri::command]
@@ -345,6 +353,13 @@ pub fn duplicate_project(state: State<'_, AppState>, source_id: String, new_name
     }
 
     Ok(new_id)
+}
+
+// ── Write Export File ──
+
+#[tauri::command]
+pub fn write_export_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| e.to_string())
 }
 
 // ── Import .env ──

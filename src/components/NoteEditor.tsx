@@ -17,6 +17,7 @@ import { HorizontalRule } from "@tiptap/extension-horizontal-rule";
 import { common, createLowlight } from "lowlight";
 import { FileCard } from "./FileCardExtension";
 import * as api from "../hooks/useTauri";
+import { exportAsMarkdown, tiptapJsonToMarkdown } from "../utils/exportItem";
 import TableGridPicker from "./TableGridPicker";
 
 const lowlight = createLowlight(common);
@@ -162,6 +163,15 @@ export default function NoteEditor({
     }
   };
 
+  const handleExport = async () => {
+    if (!editor) return;
+    const json = JSON.stringify(editor.getJSON());
+    const md = tiptapJsonToMarkdown(json);
+    const title = titleValueRef.current || "Untitled";
+    const content = title.trim() ? `# ${title}\n\n${md}` : md;
+    await exportAsMarkdown(title, content);
+  };
+
   const handleImportMarkdown = async () => {
     if (!editor) return;
 
@@ -206,6 +216,7 @@ export default function NoteEditor({
           editor={editor}
           onAttach={handleAttachFile}
           onImportMd={handleImportMarkdown}
+          onExport={handleExport}
         />
       )}
 
@@ -291,9 +302,10 @@ interface ToolbarProps {
   editor: ReturnType<typeof useEditor>;
   onAttach: () => void;
   onImportMd: () => void;
+  onExport: () => void;
 }
 
-function EditorToolbar({ editor, onAttach, onImportMd }: ToolbarProps) {
+function EditorToolbar({ editor, onAttach, onImportMd, onExport }: ToolbarProps) {
   if (!editor) return null;
 
   const btn = (
@@ -368,6 +380,14 @@ function EditorToolbar({ editor, onAttach, onImportMd }: ToolbarProps) {
         onMouseDown={(e) => e.preventDefault()}
       >
         Import .md
+      </button>
+      <button
+        type="button"
+        className="rounded px-2 py-1 text-[11px] text-text-secondary hover:text-accent"
+        onClick={onExport}
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        Export
       </button>
     </div>
   );

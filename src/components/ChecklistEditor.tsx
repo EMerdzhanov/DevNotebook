@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { LibraryEntry } from "../types";
 import * as api from "../hooks/useTauri";
+import { exportAsMarkdown } from "../utils/exportItem";
 import { IconCheck } from "./Icons";
 
 interface ChecklistItem {
@@ -94,6 +95,17 @@ export default function ChecklistEditor({ entry, onSaved, onDelete }: ChecklistE
   const total = data.items.length;
   const progress = total > 0 ? (checked / total) * 100 : 0;
 
+  const handleExport = async () => {
+    const lines: string[] = [];
+    lines.push(`# ${title}`);
+    if (total > 0) lines.push("", `Progress: ${checked}/${total} (${Math.round(progress)}%)`);
+    lines.push("");
+    data.items.forEach((item) => {
+      lines.push(`- [${item.checked ? "x" : " "}] ${item.text}`);
+    });
+    await exportAsMarkdown(title, lines.join("\n"));
+  };
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Header */}
@@ -103,6 +115,12 @@ export default function ChecklistEditor({ entry, onSaved, onDelete }: ChecklistE
           <span className="rounded bg-bg-input px-2 py-0.5 text-[10px] text-text-muted">Checklist</span>
         </div>
         <div className="flex gap-2">
+          <button
+            className="rounded px-2 py-1 text-[11px] text-text-secondary hover:text-accent"
+            onClick={handleExport}
+          >
+            Export
+          </button>
           <button
             className={`rounded px-3 py-1 text-[11px] transition-colors ${
               editing ? "bg-accent text-bg-base" : "bg-bg-input text-text-secondary hover:text-accent"

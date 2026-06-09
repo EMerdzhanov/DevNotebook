@@ -31,11 +31,20 @@ export function useCodeBlockCopy(containerSelector: string, deps: unknown[] = []
       }
     };
 
+    // Hide on scroll — fixed position goes stale
+    const scrollParent = container.closest(".overflow-y-auto") || container.parentElement;
+    const handleScroll = () => {
+      setCopyBtnPos(null);
+      setCopyFeedback(false);
+    };
+
     container.addEventListener("mouseover", handleMouseOver);
     container.addEventListener("mouseleave", handleMouseLeave as EventListener);
+    scrollParent?.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
       container.removeEventListener("mouseover", handleMouseOver);
       container.removeEventListener("mouseleave", handleMouseLeave as EventListener);
+      scrollParent?.removeEventListener("scroll", handleScroll);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);

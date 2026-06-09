@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { LibraryEntry } from "../types";
 import * as api from "../hooks/useTauri";
+import { exportAsCode } from "../utils/exportItem";
 import { IconCode } from "./Icons";
 
 interface SnippetData {
@@ -74,6 +75,10 @@ export default function CodeSnippetEditor({ entry, onSaved, onDelete }: CodeSnip
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleExport = async () => {
+    await exportAsCode(title, data.code, data.language);
+  };
+
   const lineCount = data.code.split("\n").length;
 
   return (
@@ -93,6 +98,12 @@ export default function CodeSnippetEditor({ entry, onSaved, onDelete }: CodeSnip
             onClick={handleCopy}
           >
             {copied ? "Copied!" : "Copy Code"}
+          </button>
+          <button
+            className="rounded px-2 py-1 text-[11px] text-text-secondary hover:text-accent"
+            onClick={handleExport}
+          >
+            Export
           </button>
           <button
             className={`rounded px-3 py-1 text-[11px] transition-colors ${

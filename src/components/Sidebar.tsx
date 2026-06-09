@@ -22,6 +22,7 @@ interface SidebarProps {
   favorites: Favorite[];
   onSelectFavorite: (fav: Favorite) => void;
   onDeleteCategory: (id: string) => void;
+  onRenameNoteFolder: (id: string, name: string) => void;
   onDeleteNoteFolder: (id: string) => void;
   onDeleteFileFolder: (id: string) => void;
   onToggleFavorite: (itemId: string, itemType: string, itemName: string) => void;
@@ -55,6 +56,7 @@ export default function Sidebar({
   favorites,
   onSelectFavorite,
   onDeleteCategory,
+  onRenameNoteFolder,
   onDeleteNoteFolder,
   onDeleteFileFolder,
   onToggleFavorite,
@@ -77,6 +79,8 @@ export default function Sidebar({
   const [menuOpen, setMenuOpen] = useState(false);
   const [noteMenuOpen, setNoteMenuOpen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const [renameFolderValue, setRenameFolderValue] = useState("");
   const isResizing = useRef(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -373,12 +377,38 @@ export default function Sidebar({
               setCtxMenu({
                 x: e.clientX, y: e.clientY,
                 items: [
+                  { label: "Rename", action: () => { setRenamingFolderId(folder.id); setRenameFolderValue(folder.name); } },
                   { label: "Delete", danger: true, action: () => setPendingDelete({ title: `Delete "${folder.name}"?`, action: () => onDeleteNoteFolder(folder.id) }) },
                 ],
               });
             }}
           >
-            <span>{folder.name}</span>
+            {renamingFolderId === folder.id ? (
+              <input
+                className="w-full border-none bg-transparent text-[13px] text-text-primary outline-none"
+                value={renameFolderValue}
+                onChange={(e) => setRenameFolderValue(e.target.value)}
+                onBlur={() => {
+                  if (renameFolderValue.trim() && renameFolderValue.trim() !== folder.name) {
+                    onRenameNoteFolder(folder.id, renameFolderValue.trim());
+                  }
+                  setRenamingFolderId(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    if (renameFolderValue.trim() && renameFolderValue.trim() !== folder.name) {
+                      onRenameNoteFolder(folder.id, renameFolderValue.trim());
+                    }
+                    setRenamingFolderId(null);
+                  }
+                  if (e.key === "Escape") setRenamingFolderId(null);
+                }}
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span>{folder.name}</span>
+            )}
             {folder.note_count > 0 && (
               <span className="rounded bg-bg-input px-1.5 py-0.5 text-[10px] text-text-muted">
                 {folder.note_count}

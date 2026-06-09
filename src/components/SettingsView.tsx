@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { save as dialogSave } from "@tauri-apps/plugin-dialog";
 import { themes } from "../themes";
 import * as api from "../hooks/useTauri";
 
@@ -15,6 +16,7 @@ export default function SettingsView({
 }: SettingsViewProps) {
   const [lockTimeout, setLockTimeout] = useState(30);
   const [authMethods, setAuthMethods] = useState({ password: true, pin: false, biometric: false });
+  const [preferredAuth, setPreferredAuth] = useState("password");
   const [showSetPin, setShowSetPin] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
@@ -30,6 +32,7 @@ export default function SettingsView({
   useEffect(() => {
     api.getAutoLockTimeout().then(setLockTimeout).catch(() => {});
     api.getAuthMethods().then(setAuthMethods).catch(() => {});
+    api.getPreferredAuthLocked().then(setPreferredAuth).catch(() => {});
   }, []);
 
   const handleTimeoutChange = async (minutes: number) => {
@@ -371,6 +374,38 @@ export default function SettingsView({
               {bioError && (
                 <div className="text-[12px] text-status-disconnected">{bioError}</div>
               )}
+
+              {/* Default Login Method */}
+              {(authMethods.pin || authMethods.biometric) && (
+                <div className="mt-4 border-t border-border pt-3">
+                  <div className="mb-2 text-[13px] text-text-primary">Default Login Method</div>
+                  <div className="flex gap-2">
+                    {(["password", "pin", "biometric"] as const).map((method) => {
+                      const enabled = method === "password" || (method === "pin" && authMethods.pin) || (method === "biometric" && authMethods.biometric);
+                      if (!enabled) return null;
+                      return (
+                        <button
+                          key={method}
+                          className={`flex-1 rounded border py-1.5 text-[12px] capitalize transition-colors ${
+                            preferredAuth === method
+                              ? "border-accent bg-accent/10 text-accent font-medium"
+                              : "border-border bg-bg-input text-text-muted hover:text-text-primary"
+                          }`}
+                          onClick={async () => {
+                            setPreferredAuth(method);
+                            await api.setPreferredAuth(method);
+                          }}
+                        >
+                          {method === "biometric" ? "Fingerprint" : method === "pin" ? "PIN" : "Password"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-1.5 text-[11px] text-text-dim">
+                    Shown first on the lock screen
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -411,6 +446,44 @@ export default function SettingsView({
                 <span className="text-[11px] text-text-dim">Screen lock · Sleep · Lid close</span>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Data Section */}
+      <div className="mb-8">
+        <h4 className="mb-3 text-[13px] font-medium uppercase tracking-wider text-accent">
+          Data
+        </h4>
+        <div className="rounded-md border border-border bg-bg-card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[14px] text-text-primary">Export Vault</div>
+              <div className="mt-1 text-[12px] text-text-muted">
+                Export projects, notes, todos, library, and journal as JSON
+              </div>
+              <div className="mt-0.5 text-[11px] text-text-dim">
+                Secret values are NOT included — only names and masked previews
+              </div>
+            </div>
+            <button
+              className="rounded bg-bg-input px-4 py-2 text-[13px] text-text-secondary hover:text-accent"
+              onClick={async () => {
+                try {
+                  const path = await dialogSave({
+                    defaultPath: `devnotebook-export-${new Date().toISOString().slice(0, 10)}.json`,
+                    filters: [{ name: "JSON", extensions: ["json"] }],
+                  });
+                  if (path) {
+                    await api.exportVaultToFile(path);
+                  }
+                } catch (err) {
+                  console.error("Export failed:", err);
+                }
+              }}
+            >
+              Export
+            </button>
           </div>
         </div>
       </div>

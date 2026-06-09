@@ -23,14 +23,24 @@ export default function LockScreen({
   const [localError, setLocalError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<AuthTab>("password");
   const [authMethods, setAuthMethods] = useState({ password: true, pin: false, biometric: false });
+  const [showOtherMethods, setShowOtherMethods] = useState(false);
 
   useEffect(() => {
     if (!isNewVault) {
-      api.getAuthMethodsLocked().then((methods) => {
+      Promise.all([
+        api.getAuthMethodsLocked(),
+        api.getPreferredAuthLocked(),
+      ]).then(([methods, preferred]) => {
         setAuthMethods(methods);
-        // Default to biometric if available, then PIN, then password
-        if (methods.biometric) setActiveTab("biometric");
-        else if (methods.pin) setActiveTab("pin");
+        const pref = preferred as AuthTab;
+        // Use preferred if it's still enabled, otherwise fall back
+        if (pref === "biometric" && methods.biometric) {
+          setActiveTab("biometric");
+        } else if (pref === "pin" && methods.pin) {
+          setActiveTab("pin");
+        } else {
+          setActiveTab("password");
+        }
       }).catch(() => {});
     }
   }, [isNewVault]);
@@ -86,12 +96,7 @@ export default function LockScreen({
 
   const handlePinInput = (digit: string) => {
     if (pin.length >= 8) return;
-    const next = pin + digit;
-    setPin(next);
-    if (next.length >= 4) {
-      // Auto-submit when PIN is long enough (after small delay for visual feedback)
-      setTimeout(() => handlePinSubmit(next), 150);
-    }
+    setPin(pin + digit);
   };
 
   const handlePinBackspace = () => {
@@ -122,8 +127,8 @@ export default function LockScreen({
           </p>
         </div>
 
-        {/* Auth method tabs (only for existing vaults with multiple methods) */}
-        {!isNewVault && availableTabs.length > 1 && (
+        {/* Auth method tabs — only shown when "Other methods" is clicked */}
+        {!isNewVault && showOtherMethods && availableTabs.length > 1 && (
           <div className="mb-5 flex rounded-md border border-border bg-bg-card">
             {availableTabs.map((tab) => (
               <button
@@ -133,7 +138,7 @@ export default function LockScreen({
                     ? "bg-accent/10 text-accent font-medium"
                     : "text-text-muted hover:text-text-primary"
                 }`}
-                onClick={() => { setActiveTab(tab); setLocalError(null); setPin(""); }}
+                onClick={() => { setActiveTab(tab); setLocalError(null); setPin(""); setShowOtherMethods(false); }}
               >
                 {tab === "biometric" ? "Fingerprint" : tab === "pin" ? "PIN" : "Password"}
               </button>
@@ -187,6 +192,9 @@ export default function LockScreen({
           </form>
         )}
 
+        {/* PIN keyboard input */}
+        {!isNewVault && activeTab === "pin" && <PinKeyboardListener onDigit={handlePinInput} onBackspace={handlePinBackspace} onSubmit={() => { if (pin.length >= 4) handlePinSubmit(pin); }} disabled={loading} />}
+
         {/* PIN pad */}
         {!isNewVault && activeTab === "pin" && (
           <div>
@@ -239,40 +247,90 @@ export default function LockScreen({
               </button>
             </div>
 
-            {loading && (
-              <div className="mt-4 text-center text-[12px] text-text-muted">Unlocking...</div>
-            )}
+            <button
+              className="mt-3 mx-auto block w-[240px] rounded bg-accent py-2.5 text-[14px] font-medium text-bg-base transition-colors hover:opacity-90 disabled:opacity-50"
+              onClick={() => handlePinSubmit(pin)}
+              disabled={loading || pin.length < 4}
+            >
+              {loading ? "Unlocking..." : "Unlock"}
+            </button>
           </div>
         )}
 
         {/* Biometric */}
         {!isNewVault && activeTab === "biometric" && (
-          <div className="text-center">
+          <div className="flex flex-col items-center pt-4">
             <button
-              className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-2 border-accent/50 transition-colors hover:border-accent hover:bg-accent/5"
+              className={`group relative flex h-20 w-20 items-center justify-center rounded-full border-2 transition-all duration-300 ${
+                loading
+                  ? "border-accent/70 bg-accent/10"
+                  : "border-accent/30 hover:border-accent hover:bg-accent/5"
+              }`}
               onClick={handleBiometric}
               disabled={loading}
             >
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-accent">
-                <path d="M12 10a2 2 0 0 0-2 2c0 1.02.1 2.51.412 4.12M12 10a2 2 0 0 1 2 2c0 1.02-.1 2.51-.412 4.12M12 14c0 1.02-.1 2.51-.412 4.12" />
-                <path d="M3.1 7.9C3.04 8.26 3 8.63 3 9c0 7 3 11 9 11 1 0 1.88-.12 2.67-.36" />
-                <path d="M7.2 4.8A7 7 0 0 1 19 9c0 2-.4 3.7-1 5.2" />
-                <path d="M5 12c0-1.68.33-3.17.87-4.39" />
-                <path d="M17 9.87C17 9.25 17 8.63 17 9c0 1.68-.33 3.17-.87 4.39" />
+              {loading && (
+                <span className="absolute inset-0 animate-ping rounded-full border border-accent/20" />
+              )}
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-colors ${loading ? "text-accent" : "text-accent/70 group-hover:text-accent"}`}>
+                {/* Fingerprint ridges — offset arcs like a real print */}
+                <path d="M12 2C6.48 2 2 6.48 2 12" />
+                <path d="M22 12c0-5.52-4.48-10-10-10" />
+                <path d="M12 6c-3.31 0-6 2.69-6 6 0 1.2.36 2.34 1 3.28" />
+                <path d="M18 12c0-3.31-2.69-6-6-6" />
+                <path d="M12 10c-1.1 0-2 .9-2 2 0 1.75.5 3.4 1 4.8" />
+                <path d="M14 12c0-1.1-.9-2-2-2" />
+                <path d="M17 12c0 2.76-.5 5.28-1.4 7" />
+                <path d="M12 22c.7-1.8 1-3.9 1-6" />
               </svg>
             </button>
-            <div className="mt-4 text-[13px] text-text-muted">
-              {loading ? "Authenticating..." : "Tap to unlock with fingerprint"}
+            <div className="mt-5 text-[13px] text-text-muted">
+              {loading ? "Authenticating..." : "Tap to unlock with Touch ID"}
             </div>
 
             {displayError && activeTab === "biometric" && (
-              <div className="mt-3 rounded bg-status-disconnected/10 px-3 py-2 text-[12px] text-status-disconnected">
+              <div className="mt-4 rounded bg-status-disconnected/10 px-4 py-2 text-[12px] text-status-disconnected">
                 {displayError}
               </div>
             )}
           </div>
         )}
+        {/* Other methods link */}
+        {!isNewVault && availableTabs.length > 1 && !showOtherMethods && (
+          <button
+            className="mt-6 w-full text-center text-[12px] text-text-dim transition-colors hover:text-text-muted"
+            onClick={() => setShowOtherMethods(true)}
+          >
+            Other login methods
+          </button>
+        )}
       </div>
     </div>
   );
+}
+
+function PinKeyboardListener({ onDigit, onBackspace, onSubmit, disabled }: {
+  onDigit: (d: string) => void;
+  onBackspace: () => void;
+  onSubmit: () => void;
+  disabled: boolean;
+}) {
+  useEffect(() => {
+    if (disabled) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        onDigit(e.key);
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        onBackspace();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        onSubmit();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onDigit, onBackspace, onSubmit, disabled]);
+  return null;
 }

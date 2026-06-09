@@ -22,6 +22,8 @@ export const unlockWithPin = (pin: string) => invoke<void>("unlock_with_pin", { 
 export const enableBiometric = () => invoke<void>("enable_biometric");
 export const disableBiometric = () => invoke<void>("disable_biometric");
 export const unlockWithBiometric = () => invoke<void>("unlock_with_biometric");
+export const setPreferredAuth = (method: string) => invoke<void>("set_preferred_auth", { method });
+export const getPreferredAuthLocked = () => invoke<string>("get_preferred_auth_locked");
 
 // Projects
 export const getProjects = () => invoke<Project[]>("get_projects");
@@ -78,6 +80,8 @@ export const createNoteFolder = (projectId: string, name: string) =>
   invoke<NoteFolder>("create_note_folder", { projectId, name });
 export const getNoteFolders = (projectId: string) =>
   invoke<NoteFolder[]>("get_note_folders", { projectId });
+export const renameNoteFolder = (id: string, name: string) =>
+  invoke<void>("rename_note_folder", { id, name });
 export const deleteNoteFolder = (id: string) =>
   invoke<void>("delete_note_folder", { id });
 
@@ -202,6 +206,14 @@ export const globalSearch = (query: string) =>
 // Password Generator
 export const generatePassword = (length: number, uppercase: boolean, lowercase: boolean, numbers: boolean, symbols: boolean) =>
   invoke<string>("generate_password", { length, uppercase, lowercase, numbers, symbols });
+
+// Write Export File
+export const writeExportFile = (path: string, content: string) =>
+  invoke<void>("write_export_file", { path, content });
+
+// Export
+export const exportVault = () => invoke<string>("export_vault");
+export const exportVaultToFile = (path: string) => invoke<void>("export_vault_to_file", { path });
 
 // Duplicate Project
 export const duplicateProject = (sourceId: string, newName: string) =>

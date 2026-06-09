@@ -825,6 +825,17 @@ pub fn get_note_folders(state: State<'_, AppState>, project_id: String) -> Resul
 }
 
 #[tauri::command]
+pub fn rename_note_folder(state: State<'_, AppState>, id: String, name: String) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+    conn.execute(
+        "UPDATE note_folders SET name = ?1 WHERE id = ?2",
+        params![name, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn delete_note_folder(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
     let conn = guard.as_ref().ok_or("Database not open")?;

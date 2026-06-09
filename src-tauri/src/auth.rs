@@ -57,6 +57,32 @@ pub fn get_auth_methods_locked(state: State<'_, AppState>) -> Result<AuthMethods
     })
 }
 
+// ── Preferred auth method ──
+
+#[tauri::command]
+pub fn set_preferred_auth(state: State<'_, AppState>, method: String) -> Result<(), String> {
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES ('preferred_auth', ?1)",
+        params![method],
+    ).map_err(|e| e.to_string())?;
+    drop(guard);
+
+    let pref_path = state.db.db_path.with_extension("pref");
+    std::fs::write(&pref_path, &method)
+        .map_err(|e| format!("Failed to write preference: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_preferred_auth_locked(state: State<'_, AppState>) -> Result<String, String> {
+    let pref_path = state.db.db_path.with_extension("pref");
+    std::fs::read_to_string(&pref_path).unwrap_or_else(|_| "password".to_string());
+    Ok(std::fs::read_to_string(&pref_path).unwrap_or_else(|_| "password".to_string()))
+}
+
 // ── PIN ──
 
 #[tauri::command]

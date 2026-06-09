@@ -14,6 +14,7 @@ import { common, createLowlight } from "lowlight";
 import type { LibraryEntry, Project } from "../types";
 import * as api from "../hooks/useTauri";
 import ConfirmDialog from "./ConfirmDialog";
+import { exportAsMarkdown, tiptapJsonToMarkdown } from "../utils/exportItem";
 import { LIBRARY_ICON_MAP, IconFile } from "./Icons";
 import CredentialEditor from "./CredentialEditor";
 import ChecklistEditor from "./ChecklistEditor";
@@ -337,6 +338,15 @@ function LibraryEntryEditor({
     doSave(value, content);
   };
 
+  const handleExport = async () => {
+    if (!editor) return;
+    const json = JSON.stringify(editor.getJSON());
+    const md = tiptapJsonToMarkdown(json);
+    const t = titleValueRef.current || "Untitled";
+    const content = t.trim() ? `# ${t}\n\n${md}` : md;
+    await exportAsMarkdown(t, content);
+  };
+
   // Toolbar
   const btn = (label: string, action: () => void, isActive = false) => (
     <button
@@ -371,12 +381,20 @@ function LibraryEntryEditor({
             {btn("Code Block", () => editor.chain().focus().toggleCodeBlock().run(), editor.isActive("codeBlock"))}
             <LibTableButton editor={editor} />
           </div>
-          <button
-            className="rounded px-2 py-1 text-[11px] text-status-disconnected hover:bg-bg-input"
-            onClick={onDelete}
-          >
-            Delete
-          </button>
+          <div className="flex gap-2">
+            <button
+              className="rounded px-2 py-1 text-[11px] text-text-secondary hover:text-accent"
+              onClick={handleExport}
+            >
+              Export
+            </button>
+            <button
+              className="rounded px-2 py-1 text-[11px] text-status-disconnected hover:bg-bg-input"
+              onClick={onDelete}
+            >
+              Delete
+            </button>
+          </div>
         </div>
       )}
 

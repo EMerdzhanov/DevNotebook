@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { LibraryEntry } from "../types";
 import * as api from "../hooks/useTauri";
+import { exportAsMarkdown } from "../utils/exportItem";
 import { IconBolt } from "./Icons";
 
 interface WorkflowStep {
@@ -95,6 +96,20 @@ export default function WorkflowEditor({ entry, onSaved, onDelete }: WorkflowEdi
     updateData({ steps });
   };
 
+  const handleExport = async () => {
+    const lines: string[] = [];
+    lines.push(`# ${title}`);
+    if (data.description) lines.push("", data.description);
+    lines.push("");
+    data.steps.forEach((step, idx) => {
+      lines.push(`## ${idx + 1}. ${step.title || `Step ${idx + 1}`}`);
+      if (step.description) lines.push("", step.description);
+      if (step.command) lines.push("", "```", step.command, "```");
+      lines.push("");
+    });
+    await exportAsMarkdown(title, lines.join("\n"));
+  };
+
   const [copied, setCopied] = useState<string | null>(null);
   const copyCmd = (cmd: string, id: string) => {
     navigator.clipboard.writeText(cmd);
@@ -112,6 +127,12 @@ export default function WorkflowEditor({ entry, onSaved, onDelete }: WorkflowEdi
           <span className="text-[10px] text-text-dim">{data.steps.length} step{data.steps.length !== 1 ? "s" : ""}</span>
         </div>
         <div className="flex gap-2">
+          <button
+            className="rounded px-2 py-1 text-[11px] text-text-secondary hover:text-accent"
+            onClick={handleExport}
+          >
+            Export
+          </button>
           <button
             className={`rounded px-3 py-1 text-[11px] transition-colors ${
               editing ? "bg-accent text-bg-base" : "bg-bg-input text-text-secondary hover:text-accent"

@@ -383,7 +383,7 @@ function EditorToolbar({ editor, onAttach, onImportMd, onExport }: ToolbarProps)
       </button>
       <button
         type="button"
-        className="rounded px-2 py-1 text-[11px] text-text-secondary hover:text-accent"
+        className="rounded border border-accent/50 px-2 py-1 text-[11px] text-accent transition-colors hover:bg-accent/20"
         onClick={onExport}
         onMouseDown={(e) => e.preventDefault()}
       >

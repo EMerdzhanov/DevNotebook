@@ -14,9 +14,22 @@ export default function SettingsView({
   onLockVault,
 }: SettingsViewProps) {
   const [lockTimeout, setLockTimeout] = useState(30);
+  const [authMethods, setAuthMethods] = useState({ password: true, pin: false, biometric: false });
+  const [showSetPin, setShowSetPin] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pinConfirm, setPinConfirm] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [bioError, setBioError] = useState<string | null>(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   useEffect(() => {
     api.getAutoLockTimeout().then(setLockTimeout).catch(() => {});
+    api.getAuthMethods().then(setAuthMethods).catch(() => {});
   }, []);
 
   const handleTimeoutChange = async (minutes: number) => {
@@ -25,6 +38,78 @@ export default function SettingsView({
       await api.setAutoLockTimeout(minutes);
     } catch (err) {
       console.error("Failed to set auto-lock timeout:", err);
+    }
+  };
+
+  const handleSetPin = async () => {
+    setPinError(null);
+    if (pinInput.length < 4 || pinInput.length > 8) {
+      setPinError("PIN must be 4-8 digits");
+      return;
+    }
+    if (!/^\d+$/.test(pinInput)) {
+      setPinError("PIN must contain only digits");
+      return;
+    }
+    if (pinInput !== pinConfirm) {
+      setPinError("PINs do not match");
+      return;
+    }
+    try {
+      await api.setPin(pinInput);
+      setAuthMethods((m) => ({ ...m, pin: true }));
+      setShowSetPin(false);
+      setPinInput("");
+      setPinConfirm("");
+    } catch (err) {
+      setPinError(String(err));
+    }
+  };
+
+  const handleRemovePin = async () => {
+    try {
+      await api.removePin();
+      setAuthMethods((m) => ({ ...m, pin: false }));
+    } catch (err) {
+      console.error("Failed to remove PIN:", err);
+    }
+  };
+
+  const handleToggleBiometric = async () => {
+    setBioError(null);
+    try {
+      if (authMethods.biometric) {
+        await api.disableBiometric();
+        setAuthMethods((m) => ({ ...m, biometric: false }));
+      } else {
+        await api.enableBiometric();
+        setAuthMethods((m) => ({ ...m, biometric: true }));
+      }
+    } catch (err) {
+      setBioError(String(err));
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPwError(null);
+    setPwSuccess(false);
+    if (newPw !== confirmPw) {
+      setPwError("New passwords do not match");
+      return;
+    }
+    if (newPw.length < 4) {
+      setPwError("New password must be at least 4 characters");
+      return;
+    }
+    try {
+      await api.changePassword(currentPw, newPw);
+      setPwSuccess(true);
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+      setTimeout(() => { setShowChangePassword(false); setPwSuccess(false); }, 2000);
+    } catch (err) {
+      setPwError(String(err));
     }
   };
 
@@ -110,6 +195,182 @@ export default function SettingsView({
               >
                 Lock Now
               </button>
+            </div>
+          </div>
+
+          {/* Change Password */}
+          <div className="rounded-md border border-border bg-bg-card p-4">
+            {!showChangePassword ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[14px] text-text-primary">Change Password</div>
+                  <div className="mt-1 text-[12px] text-text-muted">
+                    Update your master password
+                  </div>
+                </div>
+                <button
+                  className="rounded bg-bg-input px-4 py-2 text-[13px] text-text-secondary hover:text-text-primary"
+                  onClick={() => { setShowChangePassword(true); setPwError(null); setPwSuccess(false); }}
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="mb-3 text-[14px] text-text-primary">Change Password</div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-[12px] text-text-secondary">Current Password</label>
+                    <input
+                      type="password"
+                      className="w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
+                      value={currentPw}
+                      onChange={(e) => setCurrentPw(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[12px] text-text-secondary">New Password</label>
+                    <input
+                      type="password"
+                      className="w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
+                      value={newPw}
+                      onChange={(e) => setNewPw(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[12px] text-text-secondary">Confirm New Password</label>
+                    <input
+                      type="password"
+                      className="w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
+                      value={confirmPw}
+                      onChange={(e) => setConfirmPw(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleChangePassword(); }}
+                    />
+                  </div>
+                </div>
+                {pwError && (
+                  <div className="mt-3 rounded bg-status-disconnected/10 px-3 py-2 text-[12px] text-status-disconnected">
+                    {pwError}
+                  </div>
+                )}
+                {pwSuccess && (
+                  <div className="mt-3 rounded bg-status-connected/10 px-3 py-2 text-[12px] text-status-connected">
+                    Password changed successfully
+                  </div>
+                )}
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    className="rounded px-4 py-2 text-[13px] text-text-secondary hover:text-text-primary"
+                    onClick={() => { setShowChangePassword(false); setCurrentPw(""); setNewPw(""); setConfirmPw(""); setPwError(null); setPwSuccess(false); }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="rounded bg-accent px-4 py-2 text-[13px] font-medium text-bg-base hover:opacity-90 disabled:opacity-50"
+                    onClick={handleChangePassword}
+                    disabled={!currentPw || !newPw || !confirmPw}
+                  >
+                    Update Password
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Authentication Methods */}
+          <div className="rounded-md border border-border bg-bg-card p-4">
+            <div className="mb-3 text-[14px] text-text-primary">Authentication Methods</div>
+            <div className="space-y-3">
+              {/* PIN */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[13px] text-text-primary">PIN Unlock</div>
+                  <div className="text-[11px] text-text-dim">Quick unlock with a numeric PIN</div>
+                </div>
+                {authMethods.pin ? (
+                  <button
+                    className="rounded bg-bg-input px-3 py-1.5 text-[12px] text-status-disconnected hover:bg-status-disconnected hover:text-white"
+                    onClick={handleRemovePin}
+                  >
+                    Remove
+                  </button>
+                ) : (
+                  <button
+                    className="rounded bg-bg-input px-3 py-1.5 text-[12px] text-accent hover:bg-accent hover:text-bg-base"
+                    onClick={() => { setShowSetPin(true); setPinError(null); }}
+                  >
+                    Set PIN
+                  </button>
+                )}
+              </div>
+
+              {showSetPin && (
+                <div className="rounded border border-border bg-bg-base p-3">
+                  <div className="space-y-2">
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={8}
+                      className="w-full rounded border border-border bg-bg-input px-3 py-2 text-center text-[16px] tracking-[0.5em] text-text-primary outline-none focus:border-accent"
+                      value={pinInput}
+                      onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
+                      placeholder="Enter PIN"
+                      autoFocus
+                    />
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={8}
+                      className="w-full rounded border border-border bg-bg-input px-3 py-2 text-center text-[16px] tracking-[0.5em] text-text-primary outline-none focus:border-accent"
+                      value={pinConfirm}
+                      onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, ""))}
+                      placeholder="Confirm PIN"
+                      onKeyDown={(e) => { if (e.key === "Enter") handleSetPin(); }}
+                    />
+                  </div>
+                  {pinError && (
+                    <div className="mt-2 text-[12px] text-status-disconnected">{pinError}</div>
+                  )}
+                  <div className="mt-3 flex justify-end gap-2">
+                    <button
+                      className="rounded px-3 py-1.5 text-[12px] text-text-muted hover:text-text-primary"
+                      onClick={() => { setShowSetPin(false); setPinInput(""); setPinConfirm(""); }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-bg-base hover:opacity-90"
+                      onClick={handleSetPin}
+                    >
+                      Save PIN
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Biometric */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[13px] text-text-primary">Fingerprint Unlock</div>
+                  <div className="text-[11px] text-text-dim">Touch ID (Mac) or Windows Hello</div>
+                </div>
+                <button
+                  className={`rounded px-3 py-1.5 text-[12px] transition-colors ${
+                    authMethods.biometric
+                      ? "bg-accent/10 text-accent font-medium"
+                      : "bg-bg-input text-text-muted hover:text-text-primary"
+                  }`}
+                  onClick={handleToggleBiometric}
+                >
+                  {authMethods.biometric ? "Enabled" : "Enable"}
+                </button>
+              </div>
+              {bioError && (
+                <div className="text-[12px] text-status-disconnected">{bioError}</div>
+              )}
             </div>
           </div>
 

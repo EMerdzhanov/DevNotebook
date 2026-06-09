@@ -8,6 +8,20 @@ export const createVault = (password: string) =>
 export const unlockVault = (password: string) =>
   invoke<void>("unlock_vault", { password });
 export const lockVault = () => invoke<void>("lock_vault");
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  invoke<void>("change_password", { currentPassword, newPassword });
+
+// Auth Methods
+export const getAuthMethods = () =>
+  invoke<{ password: boolean; pin: boolean; biometric: boolean }>("get_auth_methods");
+export const getAuthMethodsLocked = () =>
+  invoke<{ password: boolean; pin: boolean; biometric: boolean }>("get_auth_methods_locked");
+export const setPin = (pin: string) => invoke<void>("set_pin", { pin });
+export const removePin = () => invoke<void>("remove_pin");
+export const unlockWithPin = (pin: string) => invoke<void>("unlock_with_pin", { pin });
+export const enableBiometric = () => invoke<void>("enable_biometric");
+export const disableBiometric = () => invoke<void>("disable_biometric");
+export const unlockWithBiometric = () => invoke<void>("unlock_with_biometric");
 
 // Projects
 export const getProjects = () => invoke<Project[]>("get_projects");

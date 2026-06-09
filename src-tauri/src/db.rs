@@ -304,3 +304,7 @@ impl Database {
 fn hex_encode(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
+
+pub fn hex_encode_key(bytes: &[u8]) -> String {
+    hex_encode(bytes)
+}

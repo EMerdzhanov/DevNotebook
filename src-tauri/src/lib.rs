@@ -1,3 +1,4 @@
+mod auth;
 mod commands;
 mod credentials;
 mod extras;
@@ -49,6 +50,15 @@ pub fn run() {
             commands::create_vault,
             commands::unlock_vault,
             commands::lock_vault,
+            commands::change_password,
+            auth::get_auth_methods,
+            auth::get_auth_methods_locked,
+            auth::set_pin,
+            auth::remove_pin,
+            auth::unlock_with_pin,
+            auth::enable_biometric,
+            auth::disable_biometric,
+            auth::unlock_with_biometric,
             commands::get_projects,
             commands::create_project,
             commands::get_all_projects,

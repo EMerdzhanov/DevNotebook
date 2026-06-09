@@ -53,6 +53,56 @@ pub fn unlock_vault(state: State<'_, AppState>, password: String) -> Result<(), 
 }
 
 #[tauri::command]
+pub fn change_password(state: State<'_, AppState>, current_password: String, new_password: String) -> Result<(), String> {
+    // Verify current password
+    let salt_path = state.db.db_path.with_extension("salt");
+    let salt = std::fs::read_to_string(&salt_path)
+        .map_err(|e| format!("Failed to read salt: {}", e))?;
+    let (current_key, _) = crypto::derive_key(&current_password, Some(&salt))?;
+
+    // Check that current key matches the one in memory
+    let key_guard = state.encryption_key.lock().map_err(|e| e.to_string())?;
+    let stored_key = key_guard.as_ref().ok_or("Vault is not unlocked")?;
+    if current_key != *stored_key {
+        return Err("Current password is incorrect".to_string());
+    }
+    drop(key_guard);
+
+    // Derive new key with new salt
+    let (new_key, new_salt) = crypto::derive_key(&new_password, None)?;
+
+    // Re-key the database
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = guard.as_ref().ok_or("Database not open")?;
+    let hex_key = crate::db::hex_encode_key(&new_key);
+    conn.pragma_update(None, "rekey", format!("x'{}'", hex_key))
+        .map_err(|e| format!("Failed to re-key database: {}", e))?;
+    drop(guard);
+
+    // Update salt file
+    std::fs::write(&salt_path, &new_salt)
+        .map_err(|e| format!("Failed to write salt file: {}", e))?;
+
+    // Update in-memory key
+    let mut key_guard = state.encryption_key.lock().map_err(|e| e.to_string())?;
+    *key_guard = Some(new_key.clone());
+    drop(key_guard);
+
+    // Invalidate PIN and biometric — they hold the old key
+    let pin_path = state.db.db_path.with_extension("pin");
+    let _ = std::fs::remove_file(&pin_path);
+    let bio_path = state.db.db_path.with_extension("bio");
+    let _ = std::fs::remove_file(&bio_path);
+    let guard = state.db.conn.lock().map_err(|e| e.to_string())?;
+    if let Some(conn) = guard.as_ref() {
+        let _ = conn.execute("DELETE FROM settings WHERE key = 'pin_data'", []);
+        let _ = conn.execute("DELETE FROM settings WHERE key = 'biometric_enabled'", []);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 pub fn lock_vault(state: State<'_, AppState>) -> Result<(), String> {
     // Clean up any decrypted temp files
     let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;

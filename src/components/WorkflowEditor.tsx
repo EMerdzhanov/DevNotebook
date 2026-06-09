@@ -37,6 +37,7 @@ export default function WorkflowEditor({ entry, onSaved, onDelete }: WorkflowEdi
   const [title, setTitle] = useState(entry.title);
   const [editing, setEditing] = useState(!data.steps.length); // Start in edit if empty
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
     const parsed = parseWorkflow(entry.content);
@@ -53,12 +54,16 @@ export default function WorkflowEditor({ entry, onSaved, onDelete }: WorkflowEdi
   const autoSave = useCallback(
     (newTitle: string, newData: WorkflowData) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      setSaveStatus("saving");
       saveTimerRef.current = setTimeout(async () => {
         try {
           await api.updateLibraryEntry(entry.id, newTitle, JSON.stringify(newData));
           onSaved();
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 2000);
         } catch (err) {
           console.error("Auto-save failed:", err);
+          setSaveStatus("idle");
         }
       }, 800);
     },
@@ -125,6 +130,9 @@ export default function WorkflowEditor({ entry, onSaved, onDelete }: WorkflowEdi
           <span className="text-accent"><IconBolt size={18} /></span>
           <span className="rounded bg-bg-input px-2 py-0.5 text-[10px] text-text-muted">Workflow</span>
           <span className="text-[10px] text-text-dim">{data.steps.length} step{data.steps.length !== 1 ? "s" : ""}</span>
+          {saveStatus !== "idle" && (
+            <span className="text-[10px] text-text-dim">{saveStatus === "saving" ? "Saving..." : "Saved"}</span>
+          )}
         </div>
         <div className="flex gap-2">
           <button

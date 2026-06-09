@@ -36,6 +36,7 @@ export default function ProjectDashboard({
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLibConfirm, setDeleteLibConfirm] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -62,8 +63,8 @@ export default function ProjectDashboard({
   }, [librarySearch]);
 
   useEffect(() => {
-    loadProjects();
-    loadLibrary();
+    setLoading(true);
+    Promise.all([loadProjects(), loadLibrary()]).finally(() => setLoading(false));
   }, [loadProjects, loadLibrary]);
 
   const handleOpen = async (id: string) => {
@@ -101,6 +102,14 @@ export default function ProjectDashboard({
 
   const activeProjects = allProjects.filter((p) => !p.is_archived);
 
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-8">
+        <div className="text-[13px] text-text-muted">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-8">
       <div className="mx-auto max-w-4xl">
@@ -122,6 +131,12 @@ export default function ProjectDashboard({
         </div>
 
         {/* Active Projects */}
+        {activeProjects.length === 0 && (
+          <div className="rounded-lg border border-dashed border-border py-12 text-center">
+            <div className="text-[14px] text-text-muted">No projects yet.</div>
+            <div className="mt-1 text-[12px] text-text-dim">Click &quot;+ New Project&quot; to create your first project.</div>
+          </div>
+        )}
         <div className="grid grid-cols-3 gap-4">
           {activeProjects.map((project) => {
             const isExpanded = expandedProjectId === project.id;

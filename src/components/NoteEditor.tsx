@@ -39,15 +39,20 @@ export default function NoteEditor({
   const titleValueRef = useRef(initialTitle);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [, setToolbarTick] = useState(0);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   const doSave = useCallback(
     (title: string, content: string) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      setSaveStatus("saving");
       saveTimerRef.current = setTimeout(async () => {
         try {
           await api.updateNote(noteId, title, content);
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 2000);
         } catch (err) {
           console.error("Auto-save failed:", err);
+          setSaveStatus("idle");
         }
       }, 800);
     },
@@ -221,13 +226,18 @@ export default function NoteEditor({
       )}
 
       <div className="flex-1 overflow-y-auto p-6">
-        <input
-          ref={titleRef}
-          className="mb-4 w-full border-none bg-transparent text-xl font-semibold text-text-primary outline-none placeholder:text-text-dim"
-          defaultValue={initialTitle}
-          onChange={(e) => handleTitleChange(e.target.value)}
-          placeholder="Note title..."
-        />
+        <div className="flex items-center gap-2">
+          <input
+            ref={titleRef}
+            className="mb-4 flex-1 border-none bg-transparent text-xl font-semibold text-text-primary outline-none placeholder:text-text-dim"
+            defaultValue={initialTitle}
+            onChange={(e) => handleTitleChange(e.target.value)}
+            placeholder="Note title..."
+          />
+          {saveStatus !== "idle" && (
+            <span className="text-[10px] text-text-dim">{saveStatus === "saving" ? "Saving..." : "Saved"}</span>
+          )}
+        </div>
 
         <EditorContent editor={editor} />
       </div>

@@ -194,8 +194,9 @@ export default function TodoPanel({ projectId, isOpen, onToggle }: TodoPanelProp
       {/* Todo list */}
       <div className="flex-1 overflow-y-auto">
         {pending.length === 0 && completed.length === 0 && (
-          <div className="px-3 py-8 text-center text-[12px] text-text-dim">
-            No tasks yet
+          <div className="px-3 py-8 text-center">
+            <div className="text-[12px] text-text-dim">No tasks yet.</div>
+            <div className="mt-1 text-[11px] text-text-dim">Click &quot;+ Task&quot; or &quot;+ Bug&quot; to add one.</div>
           </div>
         )}
 

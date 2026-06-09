@@ -37,6 +37,7 @@ export default function ChecklistEditor({ entry, onSaved, onDelete }: ChecklistE
   const [newItemText, setNewItemText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
     const parsed = parseChecklist(entry.content);
@@ -52,12 +53,16 @@ export default function ChecklistEditor({ entry, onSaved, onDelete }: ChecklistE
   const autoSave = useCallback(
     (newTitle: string, newData: ChecklistData) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      setSaveStatus("saving");
       saveTimerRef.current = setTimeout(async () => {
         try {
           await api.updateLibraryEntry(entry.id, newTitle, JSON.stringify(newData));
           onSaved();
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 2000);
         } catch (err) {
           console.error("Auto-save failed:", err);
+          setSaveStatus("idle");
         }
       }, 500);
     },
@@ -113,6 +118,9 @@ export default function ChecklistEditor({ entry, onSaved, onDelete }: ChecklistE
         <div className="flex items-center gap-2">
           <span className="text-accent"><IconCheck size={18} /></span>
           <span className="rounded bg-bg-input px-2 py-0.5 text-[10px] text-text-muted">Checklist</span>
+          {saveStatus !== "idle" && (
+            <span className="text-[10px] text-text-dim">{saveStatus === "saving" ? "Saving..." : "Saved"}</span>
+          )}
         </div>
         <div className="flex gap-2">
           <button

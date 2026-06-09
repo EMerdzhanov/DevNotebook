@@ -36,6 +36,7 @@ export default function CodeSnippetEditor({ entry, onSaved, onDelete }: CodeSnip
   const [editing, setEditing] = useState(!data.code);
   const [copied, setCopied] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
     const parsed = parseSnippet(entry.content);
@@ -51,12 +52,16 @@ export default function CodeSnippetEditor({ entry, onSaved, onDelete }: CodeSnip
   const autoSave = useCallback(
     (newTitle: string, newData: SnippetData) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      setSaveStatus("saving");
       saveTimerRef.current = setTimeout(async () => {
         try {
           await api.updateLibraryEntry(entry.id, newTitle, JSON.stringify(newData));
           onSaved();
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 2000);
         } catch (err) {
           console.error("Auto-save failed:", err);
+          setSaveStatus("idle");
         }
       }, 800);
     },
@@ -89,6 +94,9 @@ export default function CodeSnippetEditor({ entry, onSaved, onDelete }: CodeSnip
           <span className="text-accent"><IconCode size={18} /></span>
           <span className="rounded bg-bg-input px-2 py-0.5 text-[10px] text-text-muted">Code Snippet</span>
           {data.language && <span className="rounded bg-accent/15 px-2 py-0.5 text-[10px] text-accent">{data.language}</span>}
+          {saveStatus !== "idle" && (
+            <span className="text-[10px] text-text-dim">{saveStatus === "saving" ? "Saving..." : "Saved"}</span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button

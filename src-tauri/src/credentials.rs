@@ -1,6 +1,6 @@
 use crate::crypto;
 use crate::state::AppState;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tauri::State;
 use totp_rs::{Algorithm, Secret, TOTP};
 

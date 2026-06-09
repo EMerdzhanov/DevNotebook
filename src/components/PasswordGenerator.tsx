@@ -40,7 +40,7 @@ export default function PasswordGenerator({ onGenerated, onClose }: PasswordGene
               <span className="flex-1 break-all font-mono text-[13px] text-text-primary">{password}</span>
               <button
                 className={`rounded px-2 py-0.5 text-[10px] ${copied ? "text-status-connected" : "text-text-muted hover:text-accent"}`}
-                onClick={() => { navigator.clipboard.writeText(password); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                onClick={() => { navigator.clipboard.writeText(password); setCopied(true); setTimeout(() => setCopied(false), 2000); setTimeout(() => navigator.clipboard.writeText("").catch(() => {}), 30000); }}
               >
                 {copied ? "Copied!" : "Copy"}
               </button>

@@ -57,6 +57,7 @@ export default function CredentialEditor({ entry, onSaved, onDelete }: Credentia
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
     const parsed = parseStore(entry.content);
@@ -75,12 +76,16 @@ export default function CredentialEditor({ entry, onSaved, onDelete }: Credentia
   const autoSave = useCallback(
     (newTitle: string, newStore: CredentialStore) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      setSaveStatus("saving");
       saveTimerRef.current = setTimeout(async () => {
         try {
           await api.updateLibraryEntry(entry.id, newTitle, JSON.stringify(newStore));
           onSaved();
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 2000);
         } catch (err) {
           console.error("Auto-save failed:", err);
+          setSaveStatus("idle");
         }
       }, 800);
     },
@@ -139,6 +144,9 @@ export default function CredentialEditor({ entry, onSaved, onDelete }: Credentia
           <span className="text-accent"><IconLock size={18} /></span>
           <span className="rounded bg-bg-input px-2 py-0.5 text-[10px] text-text-muted">Credentials</span>
           <span className="text-[10px] text-text-dim">{store.items.length} {store.items.length === 1 ? "account" : "accounts"}</span>
+          {saveStatus !== "idle" && (
+            <span className="text-[10px] text-text-dim">{saveStatus === "saving" ? "Saving..." : "Saved"}</span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button

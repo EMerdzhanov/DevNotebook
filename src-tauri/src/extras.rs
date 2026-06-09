@@ -1,6 +1,6 @@
 use crate::state::AppState;
 use rusqlite::params;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tauri::State;
 
 // ── Global Search ──
@@ -263,13 +263,21 @@ pub fn export_vault(state: State<'_, AppState>) -> Result<String, String> {
         }))) { export.todos = rows.filter_map(|r| r.ok()).collect(); }
     }
 
-    // Export library
+    // Export library (strip credential content for security)
     if let Ok(mut stmt) = conn.prepare("SELECT id, title, content, entry_type, is_global, project_id FROM library_entries") {
-        if let Ok(rows) = stmt.query_map([], |row| Ok(serde_json::json!({
-            "id": row.get::<_, String>(0)?, "title": row.get::<_, String>(1)?,
-            "content": row.get::<_, String>(2)?, "type": row.get::<_, String>(3)?,
-            "global": row.get::<_, bool>(4)?, "project_id": row.get::<_, String>(5)?,
-        }))) { export.library = rows.filter_map(|r| r.ok()).collect(); }
+        if let Ok(rows) = stmt.query_map([], |row| {
+            let entry_type: String = row.get(3)?;
+            let content: String = if entry_type == "Credentials" {
+                "{}".to_string()
+            } else {
+                row.get(2)?
+            };
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?, "title": row.get::<_, String>(1)?,
+                "content": content, "type": entry_type,
+                "global": row.get::<_, bool>(4)?, "project_id": row.get::<_, String>(5)?,
+            }))
+        }) { export.library = rows.filter_map(|r| r.ok()).collect(); }
     }
 
     // Export journal

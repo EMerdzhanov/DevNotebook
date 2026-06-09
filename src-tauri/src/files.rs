@@ -317,6 +317,11 @@ pub fn get_file_path(state: State<'_, AppState>, file_id: String) -> Result<Stri
 
         let tmp_path = tmp_dir.join(full_path.file_name().unwrap_or_default());
         std::fs::write(&tmp_path, &decrypted).map_err(|e| e.to_string())?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&tmp_path, std::fs::Permissions::from_mode(0o600)).ok();
+        }
 
         Ok(tmp_path.to_string_lossy().to_string())
     } else {
@@ -358,6 +363,11 @@ pub fn get_thumbnail_path(state: State<'_, AppState>, file_id: String) -> Result
 
         let tmp_path = tmp_dir.join(full_path.file_name().unwrap_or_default());
         std::fs::write(&tmp_path, &decrypted).map_err(|e| e.to_string())?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&tmp_path, std::fs::Permissions::from_mode(0o600)).ok();
+        }
 
         Ok(tmp_path.to_string_lossy().to_string())
     } else {
@@ -470,6 +480,11 @@ pub fn open_file(state: State<'_, AppState>, file_id: String) -> Result<(), Stri
         // Use the original filename so the OS opens it with the right app
         let tmp_path = tmp_dir.join(&filename);
         std::fs::write(&tmp_path, &decrypted).map_err(|e| e.to_string())?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&tmp_path, std::fs::Permissions::from_mode(0o600)).ok();
+        }
         tmp_path
     } else {
         full_path
@@ -508,6 +523,11 @@ pub fn export_file(state: State<'_, AppState>, file_id: String, destination: Str
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .map_err(|e| e.to_string())?;
+
+    // Path traversal protection
+    if destination.contains("..") {
+        return Err("Invalid export path".to_string());
+    }
 
     let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let full_path = app_data.join(&file_path);
@@ -560,6 +580,11 @@ pub fn share_file(state: State<'_, AppState>, file_id: String) -> Result<(), Str
 
         let tmp_path = tmp_dir.join(&filename);
         std::fs::write(&tmp_path, &decrypted).map_err(|e| e.to_string())?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&tmp_path, std::fs::Permissions::from_mode(0o600)).ok();
+        }
         tmp_path
     } else {
         full_path
@@ -613,7 +638,9 @@ pub fn cleanup_temp_files(state: State<'_, AppState>) -> Result<(), String> {
     let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let tmp_dir = app_data.join("tmp");
     if tmp_dir.exists() {
-        let _ = std::fs::remove_dir_all(&tmp_dir);
+        if let Err(e) = std::fs::remove_dir_all(&tmp_dir) {
+            log::error!("Failed to clean up temp directory {:?}: {}", tmp_dir, e);
+        }
     }
     Ok(())
 }

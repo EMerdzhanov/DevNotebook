@@ -281,16 +281,21 @@ function LibraryEntryEditor({
   const titleRef = useRef<HTMLInputElement>(null);
   const titleValueRef = useRef(entry.title);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   const doSave = useCallback(
     (title: string, content: string) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      setSaveStatus("saving");
       saveTimerRef.current = setTimeout(async () => {
         try {
           await api.updateLibraryEntry(entry.id, title, content);
           onSaved();
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 2000);
         } catch (err) {
           console.error("Auto-save failed:", err);
+          setSaveStatus("idle");
         }
       }, 800);
     },
@@ -408,6 +413,9 @@ function LibraryEntryEditor({
           <span className="text-[10px] text-text-dim">
             {entry.is_global ? "Global" : editorProjects.find((p) => p.id === entry.project_id)?.name || "Project-linked"}
           </span>
+          {saveStatus !== "idle" && (
+            <span className="text-[10px] text-text-dim">{saveStatus === "saving" ? "Saving..." : "Saved"}</span>
+          )}
         </div>
         <input
           ref={titleRef}

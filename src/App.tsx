@@ -77,11 +77,23 @@ export default function App() {
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [autoLockTimer, setAutoLockTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [todoPanelOpen, setTodoPanelOpen] = useState(true);
-  const [sidebarWidth, setSidebarWidth] = useState(220);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    try { const v = localStorage.getItem("devnotebook-sidebar-width"); return v ? Number(v) : 220; } catch { return 220; }
+  });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem("devnotebook-sidebar-collapsed") === "true"; } catch { return false; }
+  });
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryAutoCreate, setLibraryAutoCreate] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  useEffect(() => {
+    try { localStorage.setItem("devnotebook-sidebar-collapsed", String(sidebarCollapsed)); } catch {}
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    try { localStorage.setItem("devnotebook-sidebar-width", String(sidebarWidth)); } catch {}
+  }, [sidebarWidth]);
 
   // View state
   const [viewState, setViewState] = useState<ViewState | null>(null);
@@ -138,11 +150,15 @@ export default function App() {
             try {
               await api.lockVault();
               setScreen("login");
-            } catch {}
+            } catch (err) {
+              console.error("Auto-lock failed:", err);
+            }
           }, minutes * 60 * 1000);
           setAutoLockTimer(timer);
         }
-      } catch {}
+      } catch (err) {
+        console.error("Failed to read auto-lock timeout:", err);
+      }
     };
 
     resetTimer();
@@ -241,7 +257,10 @@ export default function App() {
       try {
         const libEntries = await api.getLibraryEntries(projectId);
         setProjectLibraryEntries(libEntries.filter((e) => !e.is_global && e.entry_type !== "Credentials"));
-      } catch { setProjectLibraryEntries([]); }
+      } catch (err) {
+        console.error("Failed to load library entries:", err);
+        setProjectLibraryEntries([]);
+      }
 
       // Select first category by default
       if (cats.length > 0) {
@@ -284,6 +303,9 @@ export default function App() {
 
   // Project handlers
   const handleSelectProject = async (id: string) => {
+    if (id !== activeProjectId) {
+      setViewState(null);
+    }
     setActiveProjectId(id);
     await loadProjectData(id);
   };

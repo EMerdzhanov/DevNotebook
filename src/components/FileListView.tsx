@@ -227,7 +227,7 @@ export default function FileListView({
       <ConfirmDialog
         isOpen={deleteConfirm !== null}
         title="Delete File"
-        message="Are you sure you want to delete this file? This cannot be undone."
+        message="Are you sure you want to delete this file? It will be moved to Trash and can be restored later."
         onConfirm={() => {
           if (deleteConfirm) handleDeleteFile(deleteConfirm);
           setDeleteConfirm(null);

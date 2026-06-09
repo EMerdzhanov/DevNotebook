@@ -108,7 +108,9 @@ pub fn lock_vault(state: State<'_, AppState>) -> Result<(), String> {
     let app_data = state.db.db_path.parent().ok_or("Invalid database path".to_string())?;
     let tmp_dir = app_data.join("tmp");
     if tmp_dir.exists() {
-        let _ = std::fs::remove_dir_all(&tmp_dir);
+        if let Err(e) = std::fs::remove_dir_all(&tmp_dir) {
+            log::error!("Failed to clean up temp directory {:?}: {}", tmp_dir, e);
+        }
     }
 
     state.db.close()?;

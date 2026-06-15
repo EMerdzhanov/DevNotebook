@@ -1,18 +1,22 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
+import { generateHTML } from "@tiptap/core";
 import type { LibraryEntry } from "../types";
 import * as api from "../hooks/useTauri";
-import { exportAsMarkdown } from "../utils/exportItem";
+import { exportAsMarkdown, tiptapJsonToMarkdown } from "../utils/exportItem";
 import { IconBolt } from "./Icons";
 
 interface WorkflowStep {
   id: string;
   title: string;
-  description: string;
+  description: string; // TipTap JSON string or legacy plain text
   command: string;
 }
 
 interface WorkflowData {
-  description: string;
+  description: string; // TipTap JSON string or legacy plain text
   steps: WorkflowStep[];
 }
 
@@ -31,6 +35,110 @@ function parseWorkflow(content: string): WorkflowData {
   } catch {}
   return { description: "", steps: [] };
 }
+
+// Convert a plain-text string to TipTap JSON if it isn't already
+function toTipTapContent(value: string): Record<string, unknown> | string {
+  if (!value) return "";
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && parsed.type === "doc") return parsed;
+  } catch {}
+  // Legacy plain text — wrap into a TipTap doc
+  return {
+    type: "doc",
+    content: value.split("\n").map((line: string) => ({
+      type: "paragraph",
+      content: line ? [{ type: "text", text: line }] : [],
+    })),
+  };
+}
+
+// Extensions shared by all MiniEditors and view-mode HTML generation
+const MINI_EXTENSIONS = [
+  StarterKit.configure({ heading: false, codeBlock: false, horizontalRule: false, blockquote: false }),
+];
+
+// Render TipTap JSON (or legacy plain text) to HTML for view mode
+function descriptionToHtml(value: string): string {
+  if (!value) return "";
+  const content = toTipTapContent(value);
+  if (typeof content === "string") return "";
+  try {
+    return generateHTML(content as Parameters<typeof generateHTML>[0], MINI_EXTENSIONS);
+  } catch {
+    return value;
+  }
+}
+
+// Convert TipTap JSON description to markdown for export
+function descriptionToMarkdown(value: string): string {
+  if (!value) return "";
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && parsed.type === "doc") return tiptapJsonToMarkdown(value);
+  } catch {}
+  return value; // legacy plain text
+}
+
+// ── Mini TipTap Editor ──
+
+interface MiniEditorProps {
+  content: string; // TipTap JSON string or legacy plain text
+  onUpdate: (jsonStr: string) => void;
+  placeholder?: string;
+  entryId: string; // used as key to reset editor on entry switch
+}
+
+function MiniEditor({ content, onUpdate, placeholder, entryId }: MiniEditorProps) {
+  const editor = useEditor(
+    {
+      extensions: [
+        ...MINI_EXTENSIONS,
+        Placeholder.configure({ placeholder: placeholder || "Write something..." }),
+      ],
+      content: toTipTapContent(content),
+      onUpdate: ({ editor }) => {
+        onUpdate(JSON.stringify(editor.getJSON()));
+      },
+      editorProps: {
+        attributes: { class: "prose-editor outline-none min-h-[2.5em] text-[13px]" },
+      },
+    },
+    [entryId],
+  );
+
+  const btn = (label: string, action: () => void, isActive = false) => (
+    <button
+      type="button"
+      className={`rounded px-1.5 py-0.5 text-[10px] transition-colors ${
+        isActive ? "bg-accent/20 text-accent" : "text-text-dim hover:bg-bg-input hover:text-text-primary"
+      }`}
+      onClick={action}
+      onMouseDown={(e) => e.preventDefault()}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="mt-1 overflow-hidden rounded border border-border bg-bg-input focus-within:border-accent">
+      {editor && (
+        <div className="flex gap-0.5 border-b border-border px-2 py-1">
+          {btn("B", () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"))}
+          {btn("I", () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"))}
+          <span className="mx-0.5 border-r border-border" />
+          {btn("Bullet", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}
+          {btn("Ordered", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}
+        </div>
+      )}
+      <div className="px-3 py-1.5">
+        <EditorContent editor={editor} />
+      </div>
+    </div>
+  );
+}
+
+// ── Main WorkflowEditor ──
 
 export default function WorkflowEditor({ entry, onSaved, onDelete }: WorkflowEditorProps) {
   const [data, setData] = useState<WorkflowData>(() => parseWorkflow(entry.content));
@@ -104,11 +212,13 @@ export default function WorkflowEditor({ entry, onSaved, onDelete }: WorkflowEdi
   const handleExport = async () => {
     const lines: string[] = [];
     lines.push(`# ${title}`);
-    if (data.description) lines.push("", data.description);
+    const descMd = descriptionToMarkdown(data.description);
+    if (descMd) lines.push("", descMd);
     lines.push("");
     data.steps.forEach((step, idx) => {
       lines.push(`## ${idx + 1}. ${step.title || `Step ${idx + 1}`}`);
-      if (step.description) lines.push("", step.description);
+      const stepDescMd = descriptionToMarkdown(step.description);
+      if (stepDescMd) lines.push("", stepDescMd);
       if (step.command) lines.push("", "```", step.command, "```");
       lines.push("");
     });
@@ -121,6 +231,13 @@ export default function WorkflowEditor({ entry, onSaved, onDelete }: WorkflowEdi
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
   };
+
+  // Pre-compute view-mode HTML for descriptions
+  const descHtml = useMemo(() => descriptionToHtml(data.description), [data.description]);
+  const stepDescHtmls = useMemo(
+    () => Object.fromEntries(data.steps.map((s) => [s.id, descriptionToHtml(s.description)])),
+    [data.steps],
+  );
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -168,14 +285,19 @@ export default function WorkflowEditor({ entry, onSaved, onDelete }: WorkflowEdi
           )}
 
           {editing ? (
-            <input
-              className="mb-6 w-full rounded border border-border bg-bg-input px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
-              value={data.description}
-              onChange={(e) => updateData({ description: e.target.value })}
-              placeholder="Brief description of this workflow..."
+            <div className="mb-6">
+              <MiniEditor
+                content={data.description}
+                onUpdate={(json) => updateData({ description: json })}
+                placeholder="Brief description of this workflow..."
+                entryId={entry.id}
+              />
+            </div>
+          ) : descHtml ? (
+            <div
+              className="prose-editor mb-6 text-[13px] text-text-secondary"
+              dangerouslySetInnerHTML={{ __html: descHtml }}
             />
-          ) : data.description ? (
-            <p className="mb-6 text-[13px] text-text-secondary">{data.description}</p>
           ) : null}
 
           {/* Steps */}
@@ -204,30 +326,34 @@ export default function WorkflowEditor({ entry, onSaved, onDelete }: WorkflowEdi
                         <button className="rounded px-1 py-0.5 text-[10px] text-text-dim hover:text-status-disconnected" onClick={() => removeStep(step.id)}>×</button>
                       </div>
                     </div>
-                    <textarea
-                      className="mt-1 w-full resize-none rounded border border-border bg-bg-input px-3 py-1.5 text-[13px] text-text-primary outline-none placeholder:text-text-dim focus:border-accent"
-                      value={step.description}
-                      onChange={(e) => updateStep(step.id, { description: e.target.value })}
+                    <MiniEditor
+                      content={step.description}
+                      onUpdate={(json) => updateStep(step.id, { description: json })}
                       placeholder="Description or instructions..."
-                      rows={2}
+                      entryId={`${entry.id}-${step.id}`}
                     />
                     <div className="mt-1.5 overflow-hidden rounded border border-border bg-bg-tabbar">
                       <div className="flex items-center justify-between border-b border-border px-3 py-1">
                         <span className="text-[10px] text-text-dim">Command</span>
                       </div>
-                      <input
-                        className="w-full bg-transparent px-3 py-1.5 font-mono text-[12px] text-text-primary outline-none placeholder:text-text-dim"
+                      <textarea
+                        className="w-full resize-y bg-transparent px-3 py-1.5 font-mono text-[12px] text-text-primary outline-none placeholder:text-text-dim"
+                        style={{ minHeight: "2em" }}
                         value={step.command}
                         onChange={(e) => updateStep(step.id, { command: e.target.value })}
                         placeholder="$ npm install, gcloud run deploy, etc."
+                        rows={1}
                       />
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="text-[15px] font-medium text-text-primary">{step.title || `Step ${idx + 1}`}</div>
-                    {step.description && (
-                      <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">{step.description}</p>
+                    {stepDescHtmls[step.id] && (
+                      <div
+                        className="prose-editor mt-1 text-[13px] leading-relaxed text-text-secondary"
+                        dangerouslySetInnerHTML={{ __html: stepDescHtmls[step.id] }}
+                      />
                     )}
                     {step.command && (
                       <div className="mt-1.5 overflow-hidden rounded border border-border bg-bg-tabbar">

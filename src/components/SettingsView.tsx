@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { save as dialogSave } from "@tauri-apps/plugin-dialog";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { themes } from "../themes";
 import * as api from "../hooks/useTauri";
 
@@ -493,16 +495,125 @@ export default function SettingsView({
         <h4 className="mb-3 text-[13px] font-medium uppercase tracking-wider text-accent">
           About
         </h4>
-        <div className="rounded-md border border-border bg-bg-card p-4">
-          <div className="text-[14px] text-text-primary">
-            Dev<span className="text-accent">Notebook</span>
+        <div className="space-y-4">
+          <div className="rounded-md border border-border bg-bg-card p-4">
+            <div className="text-[14px] text-text-primary">
+              Dev<span className="text-accent">Notebook</span>
+            </div>
+            <div className="mt-1 text-[12px] text-text-muted">
+              Version 0.1.0 — Secure developer notebook
+            </div>
+            <div className="mt-1 text-[11px] text-text-dim">
+              Encryption: AES-256-GCM + SQLCipher | Key derivation: Argon2id
+            </div>
           </div>
+
+          <UpdateChecker />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UpdateChecker() {
+  const [status, setStatus] = useState<"idle" | "checking" | "available" | "downloading" | "ready" | "uptodate" | "error">("idle");
+  const [updateVersion, setUpdateVersion] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const checkForUpdate = async () => {
+    setStatus("checking");
+    setErrorMsg("");
+    try {
+      const update = await check();
+      if (update) {
+        setUpdateVersion(update.version);
+        setStatus("available");
+      } else {
+        setStatus("uptodate");
+      }
+    } catch (err) {
+      setErrorMsg(String(err));
+      setStatus("error");
+    }
+  };
+
+  const downloadAndInstall = async () => {
+    setStatus("downloading");
+    try {
+      const update = await check();
+      if (!update) return;
+
+      await update.downloadAndInstall((event) => {
+        if (event.event === "Started" && event.data.contentLength) {
+          setProgress(0);
+        } else if (event.event === "Progress") {
+          setProgress((p) => p + (event.data.chunkLength || 0));
+        } else if (event.event === "Finished") {
+          setStatus("ready");
+        }
+      });
+
+      setStatus("ready");
+    } catch (err) {
+      setErrorMsg(String(err));
+      setStatus("error");
+    }
+  };
+
+  const handleRelaunch = async () => {
+    await relaunch();
+  };
+
+  return (
+    <div className="rounded-md border border-border bg-bg-card p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[14px] text-text-primary">Updates</div>
           <div className="mt-1 text-[12px] text-text-muted">
-            Version 0.1.0 — Secure developer notebook
+            {status === "idle" && "Check for new versions"}
+            {status === "checking" && "Checking for updates..."}
+            {status === "uptodate" && "You're on the latest version"}
+            {status === "available" && `Version ${updateVersion} is available`}
+            {status === "downloading" && "Downloading update..."}
+            {status === "ready" && "Update installed — restart to apply"}
+            {status === "error" && "Update check failed"}
           </div>
-          <div className="mt-1 text-[11px] text-text-dim">
-            Encryption: AES-256-GCM + SQLCipher | Key derivation: Argon2id
-          </div>
+          {status === "error" && errorMsg && (
+            <div className="mt-1 text-[11px] text-status-disconnected">{errorMsg}</div>
+          )}
+        </div>
+        <div>
+          {(status === "idle" || status === "uptodate" || status === "error") && (
+            <button
+              className="rounded bg-bg-input px-4 py-2 text-[13px] text-text-secondary hover:text-accent"
+              onClick={checkForUpdate}
+            >
+              Check
+            </button>
+          )}
+          {status === "checking" && (
+            <span className="text-[12px] text-text-dim">...</span>
+          )}
+          {status === "available" && (
+            <button
+              className="rounded bg-accent px-4 py-2 text-[13px] font-medium text-bg-base hover:opacity-90"
+              onClick={downloadAndInstall}
+            >
+              Update
+            </button>
+          )}
+          {status === "downloading" && (
+            <span className="text-[12px] text-accent">{Math.round(progress / 1024)}KB</span>
+          )}
+          {status === "ready" && (
+            <button
+              className="rounded bg-accent px-4 py-2 text-[13px] font-medium text-bg-base hover:opacity-90"
+              onClick={handleRelaunch}
+            >
+              Restart
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -33,8 +33,8 @@ Developers usually spread project knowledge across many places. API keys sit in 
 - Master password with **Argon2id** key derivation. The password is never stored.
 - The whole database is encrypted with **SQLCipher**.
 - Secrets are also encrypted per field with **AES-256-GCM** (defense in depth).
-- Quick unlock with a PIN or **Touch ID** (macOS)
-- Exponential backoff on failed unlock attempts
+- Optional quick unlock with a PIN or Touch ID / Windows Hello (convenience features; the master password is the primary protection)
+- Configurable auto-lock timeout
 - Fully offline. Your data never leaves your machine.
 
 **Distribution**
@@ -91,6 +91,7 @@ npm run tauri build   # produce installers
 
 ## Roadmap
 
+- Move quick-unlock keys into the OS keychain (macOS Keychain / Windows Credential Manager)
 - QR-code pairing with a phone companion ([plan](docs/superpowers/plans))
 - macOS notarization and Windows code signing
 
